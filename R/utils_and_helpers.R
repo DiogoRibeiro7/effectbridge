@@ -664,7 +664,7 @@ batch_analysis <- function(
 #' @export
 print.batch_unconf_test <- function(x, ...) {
     cat("# Batch Unconfoundedness Test Results\n")
-    cat("=" * 50, "\n\n")
+    cat(strrep("=", 50), "\n\n")
 
     n_analyses <- length(x)
     n_successful <- sum(sapply(x, function(obj) !is.null(obj$estimates)))

@@ -1270,55 +1270,194 @@ estimate_matching <- function(Y, A, X, weights, effect_measure, family_y) {
 
 # Helper functions for estimators
 
-#' Fit propensity score model
-#' @param A Treatment vector
-#' @param X Covariate matrix
-#' @param weights Sample weights
-#' @return Propensity score fit
-fit_propensity_model <- function(A, X, weights) {
-  # Prepare data
-  if (ncol(X) > 1 || !all(X[, 1] == 1)) {
-    predictors <- X[, !colnames(X) %in% "(Intercept)", drop = FALSE]
-    if (ncol(predictors) == 0) {
-      df <- data.frame(A = A)
-      formula <- A ~ 1
-    } else {
-      df <- data.frame(A = A, predictors)
-      formula <- as.formula(paste(
-        "A ~",
-        paste(names(predictors), collapse = " + ")
-      ))
-    }
-  } else {
-    df <- data.frame(A = A)
-    formula <- A ~ 1
+#' Extract covariate names from a model formula
+#'
+#' Given a formula like `Y ~ A + X1 + X2`, return the covariate names
+#' to be used in the propensity model: all symbols on the RHS except `treat`.
+#' Works with interactions (X1:X2), functions (log(X1)), and backticked names.
+#' If a variable isn't a column in `data`, it's dropped.
+#'
+#' @param formula stats::formula like `Y ~ A + X1 + X2`
+#' @param data data.frame used to validate which names actually exist
+#' @param treat character(1) name of the treatment variable (default "A")
+#' @return character() vector of covariate names present in `data`
+#' @examples
+#' df <- data.frame(Y=0, A=0, X1=1, X2=2, X3=3)
+#' extract_covariates(Y ~ A + X1 + X2, df)          # c("X1","X2")
+#' extract_covariates(Y ~ A + log(X1) + X2:X3, df)  # c("X1","X2","X3")
+#'
+#' @keywords internal
+extract_covariates <- function(formula, data, treat = "A") {
+  # --- type checks ------------------------------------------------------------
+  if (!inherits(formula, "formula")) {
+    stop("`formula` must be a stats::formula.", call. = FALSE)
+  }
+  if (!is.data.frame(data)) {
+    stop("`data` must be a data.frame.", call. = FALSE)
+  }
+  if (!is.character(treat) || length(treat) != 1L || is.na(treat) || treat == "") {
+    stop("`treat` must be a non-empty character(1).", call. = FALSE)
   }
 
-  # Fit model
+  # --- pull symbols from RHS only --------------------------------------------
+  # all.vars() returns symbol names appearing in the expression,
+  # expanding interactions/functions etc. We avoid evaluating anything.
+  rhs <- formula[[3L]]
+  rhs_vars <- all.vars(rhs)
+
+  # --- drop treatment and keep only columns that exist ------------------------
+  covars <- setdiff(rhs_vars, treat)
+  covars <- intersect(covars, colnames(data))
+
+  covars
+}
+
+#' Build a propensity-score formula safely
+#'
+#' Constructs a formula of the form \code{A ~ x1 + x2 + ...} from a set of
+#' predictor names. If \code{predictors} is empty, it falls back to the
+#' intercept-only model \code{A ~ 1} and emits a warning.
+#'
+#' @param predictors character()
+#'   Vector of predictor (covariate) column names. May be length 0.
+#'
+#' @return formula
+#'   A valid formula object for use in \code{glm()}.
+#'
+#' @examples
+#' build_ps_formula(c("X1","X2"))  # A ~ X1 + X2
+#' build_ps_formula(character(0))  # A ~ 1 (with warning)
+#'
+#' @keywords internal
+build_ps_formula <- function(predictors) {
+  # ---- Type checks -----------------------------------------------------------
+  if (!is.character(predictors)) {
+    stop("`predictors` must be a character vector of column names.", call. = FALSE)
+  }
+  if (anyNA(predictors)) {
+    stop("`predictors` contains NA values.", call. = FALSE)
+  }
+
+  # ---- Empty set => intercept-only ------------------------------------------
+  if (length(predictors) == 0L) {
+    warning(
+      "No covariates available for the propensity model; using intercept-only model (A ~ 1).",
+      call. = FALSE
+    )
+    return(A ~ 1)
+  }
+
+  # ---- Construct A ~ x1 + x2 + ... ------------------------------------------
+  stats::as.formula(paste("A ~", paste(predictors, collapse = " + ")))
+}
+
+#' Fit propensity score model
+#'
+#' Builds a logistic regression for \code{A} given covariates \code{X}.
+#' Handles the cases where \code{X} has only an intercept or no columns
+#' by falling back to \code{A ~ 1}. Also stabilizes fitted probabilities to
+#' avoid exact 0/1 weights downstream.
+#'
+#' @param A numeric|integer|logical
+#'   Treatment indicator (0/1). Coerced to integer 0/1 if logical.
+#' @param X matrix|data.frame
+#'   Covariate design (may include an \code{"(Intercept)"} column). Row count
+#'   must match \code{length(A)}. Column names are required (added if missing).
+#' @param weights numeric|NULL
+#'   Optional sampling weights of length \code{length(A)}. Defaults to 1.
+#'
+#' @return list
+#'   \itemize{
+#'     \item \code{model}: the \code{glm} fit (or a placeholder list on fallback)
+#'     \item \code{fitted_values}: numeric vector of stabilized propensities
+#'     \item \code{formula}: the formula used
+#'   }
+#'
+#' @examples
+#' set.seed(1)
+#' A <- rbinom(100, 1, 0.4)
+#' X <- cbind(`(Intercept)` = 1, X1 = rnorm(100), X2 = rnorm(100))
+#' fit <- fit_propensity_model(A, X, weights = NULL)
+#' head(fit$fitted_values)
+#'
+#' @keywords internal
+fit_propensity_model <- function(A, X, weights = NULL) {
+  # ---- Type checks -----------------------------------------------------------
+  n <- length(A)
+  if (is.logical(A)) A <- as.integer(A)
+  if (!is.numeric(A) || any(!A %in% c(0, 1))) {
+    stop("`A` must be a binary vector (0/1 or logical).", call. = FALSE)
+  }
+
+  if (!is.matrix(X) && !is.data.frame(X)) {
+    stop("`X` must be a matrix or data.frame.", call. = FALSE)
+  }
+  if (nrow(X) != n) {
+    stop("`nrow(X)` must equal length(A).", call. = FALSE)
+  }
+
+  # Normalize colnames (required for formula terms)
+  if (is.null(colnames(X))) {
+    colnames(X) <- paste0("X", seq_len(ncol(X)))
+  }
+
+  # Weights default to 1
+  if (is.null(weights)) {
+    weights <- rep(1, n)
+  } else {
+    if (!is.numeric(weights) || length(weights) != n) {
+      stop("`weights` must be numeric and the same length as `A`.", call. = FALSE)
+    }
+  }
+
+  # ---- Build predictors data.frame (drop intercept-like columns) ------------
+  # Intercept columns are commonly named "(Intercept)" (from model.matrix),
+  # or sometimes a constant-1 unnamed column. We drop any column that is all 1s
+  # or is named "(Intercept)".
+  X_df <- as.data.frame(X, check.names = TRUE)
+  is_intercept_col <- function(col, nm) {
+    (nm == "(Intercept)") || (is.numeric(col) && all(col == 1))
+  }
+  keep <- !mapply(is_intercept_col, X_df, names(X_df))
+  predictors_df <- X_df[, keep, drop = FALSE]
+
+  # ---- Build safe formula ----------------------------------------------------
+  predictor_names <- colnames(predictors_df)
+  f_ps <- build_ps_formula(predictor_names)
+
+  # ---- Assemble modeling data.frame -----------------------------------------
+  df <- if (length(predictor_names)) {
+    data.frame(A = A, predictors_df, check.names = TRUE)
+  } else {
+    data.frame(A = A, check.names = TRUE)
+  }
+
+  # ---- Fit model (robust fallback) ------------------------------------------
   fit <- tryCatch(
-    {
-      glm(formula, data = df, family = binomial(), weights = weights)
-    },
+    stats::glm(f_ps, data = df, family = stats::binomial(), weights = weights),
     error = function(e) {
-      # Fallback for perfect separation or other issues
+      # Separation / singularities / other failures: fallback to marginal p
       warning(
-        "Propensity score model fitting failed, using marginal probability"
+        "Propensity score model fitting failed; using marginal treated proportion as PS.",
+        call. = FALSE
       )
-      list(fitted.values = rep(mean(A), length(A)))
+      list(fitted.values = rep(mean(A), n))
     }
   )
 
-  # Extract fitted values
+  # ---- Stabilize fitted probabilities ---------------------------------------
   if (inherits(fit, "glm")) {
-    fitted_values <- pmax(pmin(fitted(fit), 0.999), 0.001) # Stabilize
+    p <- stats::fitted(fit)
   } else {
-    fitted_values <- fit$fitted.values
+    p <- fit$fitted.values
   }
+  # clamp to (1e-3, 1-1e-3) to avoid extreme weights
+  p <- pmin(pmax(p, 1e-3), 1 - 1e-3)
 
   list(
     model = fit,
-    fitted_values = fitted_values,
-    formula = formula
+    fitted_values = p,
+    formula = f_ps
   )
 }
 

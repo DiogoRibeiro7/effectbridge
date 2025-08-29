@@ -1,43 +1,43 @@
 Package: unconfoundedr
 Title: Test Unconfoundedness by Comparing RCT and Observational Effects
 Version: 0.2.0
-Authors@R: c(person(given = "Diogo", family = "Ribeiro", role = c("aut","cre"),
-                    email = "diogo.debastos.ribeiro@gmail.com",
-                    comment = c(ORCID = "0009-0001-2022-7072")))
-Description: Comprehensive toolkit for testing unmeasured confounding by
-    comparing marginal treatment effects between RCT-like and observational
-    datasets. Features multiple estimators (IPW, AIPW, TMLE, G-computation, 
-    matching), effect measures (risk difference, risk ratio, odds ratio), 
-    transportability weighting with auto-detection via covariate shift tests,
-    bootstrap and analytical inference, extensive diagnostics including
-    overlap assessment and balance checks, sensitivity analysis with E-values,
-    and comprehensive visualization and reporting capabilities.
+Authors@R: 
+    c(person(given = "Diogo", family = "Ribeiro",
+             role = c("aut", "cre"),
+             email = "diogo.debastos.ribeiro@gmail.com",
+             comment = c(ORCID = "0009-0001-2022-7072")))
+Description: Compare marginal treatment effects from RCT-like and observational
+    datasets to assess (un)confoundedness. Supports IPW/AIPW/TMLE/G-computation,
+    multiple effect measures, bootstrap and analytical inference, diagnostics,
+    and visualization.
 License: MIT + file LICENSE
 Encoding: UTF-8
-Language: en-US
-Depends: R (>= 4.1.0)
-Imports:
-    stats (>= 4.1.0),
-    utils (>= 4.1.0),
-    graphics (>= 4.1.0),
-    grDevices (>= 4.1.0)
-Suggests:
-    testthat (>= 3.1.0),
-    knitr (>= 1.40),
-    rmarkdown (>= 2.15),
-    covr (>= 3.5.0),
-    tmle (>= 1.5.0),
-    MatchIt (>= 4.4.0),
-    energy (>= 1.7.0),
-    parallel (>= 4.1.0),
-    survival (>= 3.4.0),
-    MASS (>= 7.3.0)
-Config/testthat/edition: 3
-Config/Needs/website: pkgdown (>= 2.0.0)
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 URL: https://diogoribeiro7.github.io/packages/unconfoundedr/, https://github.com/DiogoRibeiro7/unconfoundedr
 BugReports: https://github.com/DiogoRibeiro7/unconfoundedr/issues
-LazyData: true
-ByteCompile: true
+Depends: 
+    R (>= 4.1.0)
+Imports:
+    stats,
+    utils,
+    graphics,
+    grDevices
+Suggests:
+    data.table,
+    glmnet,
+    SuperLearner,
+    tmle,
+    MatchIt,
+    energy,
+    survival,
+    MASS,
+    testthat (>= 3.0.0),
+    roxygen2,
+    pkgdown,
+    knitr,
+    rmarkdown
 VignetteBuilder: knitr
+Config/testthat/edition: 3
+LazyData: false
+ByteCompile: true

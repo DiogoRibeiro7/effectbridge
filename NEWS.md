@@ -1,4 +1,37 @@
+# unconfoundedr 0.2.0
+
+## Fixes
+
+- Fixed critical bug in propensity score fitting:
+
+  - Added `build_ps_formula()` to safely construct formulas.
+  - Added `extract_covariates()` to pull covariates from a user formula.
+  - `fit_propensity_model()` now:
+
+    - drops intercept-only columns,
+    - falls back to `A ~ 1` when no predictors are available,
+    - clamps fitted propensities to avoid 0/1 weights,
+    - handles perfect separation by reverting to marginal treatment probability.
+
+- Fixed print method for batch results:
+
+  - Replaced invalid `cat("=" * 50)` with `cat(strrep("=", 50))`.
+
+- Removed stale reference to non-existent `inference_and_diagnostics.R`.
+
+## Improvements
+
+- Stronger input validation with clearer error messages for formulas, weights, and covariates.
+- More robust handling of empty or misspecified formulas in test cases.
+- Internal helpers are now keyworded as `internal` to clarify user-facing API.
+
 # unconfoundedr 0.1.0
 
-* Initial release: AIPW/IPW estimators, bootstrap CI, Wald test, transport modes
-  (`none`, `rct_to_obs`, `auto` with KS/energy), diagnostics, and vignette.
+- Initial CRAN-style release.
+- Core function `unconfoundedness_test()` implemented with support for:
+
+  - IPW, AIPW, TMLE, G-computation, and matching estimators.
+  - Effect measures: risk difference, risk ratio, odds ratio.
+  - Inference methods: bootstrap, analytical, and robust SE.
+  - Optional transport weighting with auto-detection (KS, energy tests).
+  - Basic diagnostics and sensitivity analysis.

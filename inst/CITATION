@@ -1,0 +1,10 @@
+citHeader("To cite unconfoundedr in publications use:")
+
+citEntry(
+  entry    = "Manual",
+  title    = "unconfoundedr: Test Unconfoundedness by Comparing RCT and Observational Effects",
+  author   = person("Diogo", "Ribeiro"),
+  year     = "2025",
+  note     = "R package version 0.2.0",
+  url      = "https://github.com/DiogoRibeiro7/unconfoundedr"
+)

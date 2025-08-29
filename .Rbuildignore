@@ -1,1 +1,9 @@
+^\.github$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^README\.md$
+^NEWS\.md$
 ^LICENSE\.md$
+^vignettes/.*\.html$
+^blog-repo$
