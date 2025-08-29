@@ -777,10 +777,6 @@ create_result_object <- function(
 
     result
 }
-inference_and_diagnostics.R - Inference
-and
-comprehensive
-diagnostics
 
 #' Compute effect difference
 #' @param rct_effect RCT effect estimate
