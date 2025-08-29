@@ -7,7 +7,7 @@ name: pkgdown
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, develop]
     tags: ['*']
   workflow_dispatch:
 
