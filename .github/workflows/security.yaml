@@ -280,7 +280,7 @@ jobs:
           for pattern in "${sensitive_patterns[@]}"; do
             if find . -name "$pattern" -not -path "./.git/*" | grep -q .; then
               echo "::error::Sensitive file pattern found: $pattern"
-            fi"
+            fi
           done
 
           echo "🔍 Basic secret pattern scan..."
