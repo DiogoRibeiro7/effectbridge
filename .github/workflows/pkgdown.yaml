@@ -1,6 +1,6 @@
 # .github/workflows/pkgdown.yaml
 # Build pkgdown site for this package and publish it into your blog repo at:
-#   https://diogoribeiro7.github.io/packages/<pkg>/
+#   https://diogoribeiro7.github.io/packages/unconfoundedr/
 # Requires a PAT with "repo" scope stored as PERSONAL_ACCESS_TOKEN in *this* repo.
 
 name: pkgdown
@@ -25,8 +25,7 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       BLOG_REPO: DiogoRibeiro7/DiogoRibeiro7.github.io
-      PKG_SLUG: ${{ github.event.repository.name }}      
-      BLOG_DEST: packages/${{ github.event.repository.name }}
+      BLOG_DEST: packages/unconfoundedr   # change if you want a different mount point
 
     steps:
       - name: Checkout package repository
@@ -40,13 +39,18 @@ jobs:
         with:
           use-public-rspm: true
 
-      - name: Install dependencies
+      - name: Install dependencies (roxygen2 + pkgdown + local package)
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: |
+            any::roxygen2
             any::pkgdown
             local::.
           needs: website
+
+      - name: Document (generate NAMESPACE & man/)
+        run: roxygen2::roxygenise()
+        shell: Rscript {0}
 
       - name: Build pkgdown site into docs/
         run: pkgdown::build_site(preview = FALSE)
@@ -63,11 +67,10 @@ jobs:
         run: |
           mkdir -p "blog-repo/${BLOG_DEST}"
           rsync -av --delete docs/ "blog-repo/${BLOG_DEST}/"
-          echo "Deployed to blog-repo/${BLOG_DEST}/"
-          ls -la "blog-repo/${BLOG_DEST}" | sed -n '1,50p'
+          # show a short listing for debugging
+          ls -la "blog-repo/${BLOG_DEST}" | sed -n '1,80p'
 
-      # Optional: if you want CI to also ensure a /packages/ nav exists, add a step here.
-      # Otherwise manage /packages/index.md and navigation.yml manually in the blog repo.
+      # If you manage /packages/index.md and navigation.yml manually, you don't need auto-edit steps.
 
       - name: Commit and push changes to blog
         run: |
@@ -78,6 +81,6 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Update ${PKG_SLUG} pkgdown documentation"
+            git commit -m "Update unconfoundedr pkgdown documentation"
             git push
           fi
