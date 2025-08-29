@@ -1,0 +1,367 @@
+# Automated release workflow
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 0.2.0)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Is this a pre-release?'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  # Validate release readiness
+  validate:
+    name: Validate Release
+    runs-on: ubuntu-latest
+    
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is_prerelease: ${{ steps.version.outputs.is_prerelease }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version information
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+            IS_PRERELEASE="${{ github.event.inputs.prerelease }}"
+          else
+            VERSION=${GITHUB_REF#refs/tags/v}
+            if [[ "$VERSION" == *"alpha"* ]] || [[ "$VERSION" == *"beta"* ]] || [[ "$VERSION" == *"rc"* ]]; then
+              IS_PRERELEASE=true
+            else
+              IS_PRERELEASE=false
+            fi
+          fi
+          
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "is_prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
+          
+          echo "🏷️ Version: $VERSION"
+          echo "🚀 Pre-release: $IS_PRERELEASE"
+
+      - name: Setup R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - name: Validate DESCRIPTION version
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          DESC_VERSION=$(grep "^Version:" DESCRIPTION | sed 's/Version: //')
+          
+          if [[ "$DESC_VERSION" != "$VERSION" ]]; then
+            echo "❌ Version mismatch!"
+            echo "DESCRIPTION version: $DESC_VERSION"
+            echo "Release version: $VERSION"
+            exit 1
+          fi
+          
+          echo "✅ Version validation passed"
+
+      - name: Check NEWS.md
+        run: |
+          if ! grep -q "${{ steps.version.outputs.version }}" NEWS.md; then
+            echo "⚠️ Warning: Version ${{ steps.version.outputs.version }} not found in NEWS.md"
+          else
+            echo "✅ NEWS.md contains release notes for ${{ steps.version.outputs.version }}"
+          fi
+
+  # Build and test before release
+  build:
+    name: Build Package
+    needs: validate
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - name: Setup Pandoc
+        uses: r-lib/actions/setup-pandoc@v2
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev
+
+      - name: Install dependencies
+        run: |
+          install.packages(c("remotes", "rcmdcheck", "devtools"))
+          remotes::install_deps(dependencies = TRUE)
+        shell: Rscript {0}
+
+      - name: Build source package
+        if: runner.os == 'Linux'
+        run: |
+          devtools::build(vignettes = TRUE)
+        shell: Rscript {0}
+
+      - name: Build binary package
+        if: runner.os != 'Linux'
+        run: |
+          devtools::build(binary = TRUE, vignettes = TRUE)
+        shell: Rscript {0}
+
+      - name: Check package
+        run: |
+          rcmdcheck::rcmdcheck(
+            args = c("--no-manual", "--as-cran"),
+            error_on = "warning"
+          )
+        shell: Rscript {0}
+
+      - name: Upload built packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-${{ runner.os }}
+          path: |
+            *.tar.gz
+            *.zip
+            *.tgz
+
+  # Create GitHub release
+  release:
+    name: Create Release
+    needs: [validate, build]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          
+          # Extract release notes from NEWS.md
+          if grep -q "^# unconfoundedr $VERSION" NEWS.md; then
+            # Extract content between this version and the next
+            awk "/^# unconfoundedr $VERSION/,/^# unconfoundedr [0-9]/" NEWS.md | \
+              head -n -1 | tail -n +2 > release_notes.md
+          else
+            # Fallback release notes
+            cat > release_notes.md << EOF
+          ## unconfoundedr $VERSION
+          
+          New release of unconfoundedr with enhanced functionality.
+          
+          ### What's New
+          - Multiple estimators (IPW, AIPW, TMLE, G-computation, Matching)
+          - Comprehensive diagnostics and sensitivity analysis
+          - Enhanced visualization and reporting capabilities
+          - Improved performance and robustness
+          
+          ### Installation
+          
+          \`\`\`r
+          # From GitHub
+          devtools::install_github("DiogoRibeiro7/unconfoundedr@v$VERSION")
+          \`\`\`
+          
+          See the [documentation](https://diogoribeiro7.github.io/packages/unconfoundedr/) for full details.
+          EOF
+          fi
+          
+          # Add installation instructions
+          cat >> release_notes.md << EOF
+          
+          ---
+          
+          ## 📦 Package Files
+          
+          - **Source package**: \`unconfoundedr_$VERSION.tar.gz\` (all platforms)
+          - **Windows binary**: \`unconfoundedr_$VERSION.zip\` (Windows users)
+          - **macOS binary**: \`unconfoundedr_$VERSION.tgz\` (macOS users)
+          
+          ## 🚀 Quick Start
+          
+          \`\`\`r
+          library(unconfoundedr)
+          
+          # Generate example data
+          rct_data <- generate_rct_data(n = 500)
+          obs_data <- generate_obs_data(n = 1000, confounding_strength = 0.3)
+          
+          # Test unconfoundedness
+          result <- unconfoundedness_test(
+            data_rct = rct_data,
+            data_obs = obs_data,
+            formula = Y ~ A + X1 + X2,
+            estimator = "aipw",
+            transport = "auto"
+          )
+          
+          print(result)
+          plot(result)
+          \`\`\`
+          
+          ## 📚 Documentation
+          
+          - [Getting Started Guide](https://diogoribeiro7.github.io/packages/unconfoundedr/articles/getting-started.html)
+          - [Function Reference](https://diogoribeiro7.github.io/packages/unconfoundedr/reference/)
+          - [GitHub Repository](https://github.com/DiogoRibeiro7/unconfoundedr)
+          EOF
+          
+          echo "Generated release notes:"
+          cat release_notes.md
+
+      - name: Organize release assets
+        run: |
+          mkdir -p release-assets
+          
+          # Find and organize package files
+          find . -name "*.tar.gz" -exec cp {} release-assets/ \;
+          find . -name "*.zip" -exec cp {} release-assets/ \;
+          find . -name "*.tgz" -exec cp {} release-assets/ \;
+          
+          # List what we have
+          echo "Release assets:"
+          ls -la release-assets/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.validate.outputs.version }}
+          name: unconfoundedr ${{ needs.validate.outputs.version }}
+          body_path: release_notes.md
+          prerelease: ${{ needs.validate.outputs.is_prerelease }}
+          files: release-assets/*
+          generate_release_notes: false
+          draft: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Optional: Submit to CRAN (manual trigger)
+  cran-submit:
+    name: Submit to CRAN
+    needs: [validate, release]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.submit_to_cran == 'true'
+    environment: cran-submission
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - name: Install dependencies
+        run: |
+          install.packages(c("devtools", "rhub", "urlchecker"))
+        shell: Rscript {0}
+
+      - name: Final CRAN checks
+        run: |
+          # URL checker
+          urlchecker::url_check()
+          
+          # Build for CRAN
+          devtools::build()
+          
+          # Final R CMD check with CRAN settings
+          rcmdcheck::rcmdcheck(
+            args = c("--as-cran", "--no-manual"),
+            error_on = "warning"
+          )
+        shell: Rscript {0}
+
+      - name: Submit to CRAN (manual step)
+        run: |
+          echo "📦 Package is ready for CRAN submission!"
+          echo "Manual steps required:"
+          echo "1. Download the source package: unconfoundedr_${{ needs.validate.outputs.version }}.tar.gz"
+          echo "2. Submit to CRAN: https://cran.r-project.org/submit.html"
+          echo "3. Monitor CRAN check results"
+          
+          # Note: Actual submission still requires manual intervention
+          # due to CRAN's requirements for human review
+
+  # Update documentation post-release
+  update-docs:
+    name: Update Documentation
+    needs: [validate, release]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Repository Dispatch
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          event-type: update-docs
+          client-payload: |
+            {
+              "version": "${{ needs.validate.outputs.version }}",
+              "ref": "${{ github.ref }}"
+            }
+
+  # Notify release
+  notify:
+    name: Notify Release
+    needs: [validate, release]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Create release summary
+        run: |
+          if [[ "${{ needs.release.result }}" == "success" ]]; then
+            echo "✅ **Release Successful!**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "🏷️ **Version**: ${{ needs.validate.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+            echo "🔗 **Release**: [View on GitHub](https://github.com/${{ github.repository }}/releases/tag/v${{ needs.validate.outputs.version }})" >> $GITHUB_STEP_SUMMARY
+            echo "📚 **Documentation**: [View docs](https://diogoribeiro7.github.io/packages/unconfoundedr/)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+            echo "- [ ] Test installation from GitHub" >> $GITHUB_STEP_SUMMARY
+            echo "- [ ] Update any dependent packages" >> $GITHUB_STEP_SUMMARY
+            echo "- [ ] Consider CRAN submission if stable" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Release Failed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Please check the workflow logs for details." >> $GITHUB_STEP_SUMMARY
+          fi
+
+    #   # Optional: Slack/Discord/Email notification
+    #   - name: Notify team (if configured)
+    #     if: success() && secrets.SLACK_WEBHOOK_URL
+    #     run: |
+    #       curl -X POST -H 'Content-type: application/json' \
+    #         --data '{"text":"🚀 unconfoundedr v${{ needs.validate.outputs.version }} has been released! https://github.com/${{ github.repository }}/releases/tag/v${{ needs.validate.outputs.version }}"}' \
+    #         ${{ secrets.SLACK_WEBHOOK_URL }}
