@@ -358,10 +358,10 @@ jobs:
             echo "Please check the workflow logs for details." >> $GITHUB_STEP_SUMMARY
           fi
 
-      # Optional: Slack/Discord/Email notification
-      - name: Notify team (if configured)
-        if: success() && secrets.SLACK_WEBHOOK_URL
-        run: |
-          curl -X POST -H 'Content-type: application/json' \
-            --data '{"text":"🚀 unconfoundedr v${{ needs.validate.outputs.version }} has been released! https://github.com/${{ github.repository }}/releases/tag/v${{ needs.validate.outputs.version }}"}' \
-            ${{ secrets.SLACK_WEBHOOK_URL }}
+    #   # Optional: Slack/Discord/Email notification
+    #   - name: Notify team (if configured)
+    #     if: success() && secrets.SLACK_WEBHOOK_URL
+    #     run: |
+    #       curl -X POST -H 'Content-type: application/json' \
+    #         --data '{"text":"🚀 unconfoundedr v${{ needs.validate.outputs.version }} has been released! https://github.com/${{ github.repository }}/releases/tag/v${{ needs.validate.outputs.version }}"}' \
+    #         ${{ secrets.SLACK_WEBHOOK_URL }}
