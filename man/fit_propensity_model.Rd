@@ -4,18 +4,39 @@
 \alias{fit_propensity_model}
 \title{Fit propensity score model}
 \usage{
-fit_propensity_model(A, X, weights)
+fit_propensity_model(A, X, weights = NULL)
 }
 \arguments{
-\item{A}{Treatment vector}
+\item{A}{numeric|integer|logical
+Treatment indicator (0/1). Coerced to integer 0/1 if logical.}
 
-\item{X}{Covariate matrix}
+\item{X}{matrix|data.frame
+Covariate design (may include an \code{"(Intercept)"} column). Row count
+must match \code{length(A)}. Column names are required (added if missing).}
 
-\item{weights}{Sample weights}
+\item{weights}{numeric|NULL
+Optional sampling weights of length \code{length(A)}. Defaults to 1.}
 }
 \value{
-Propensity score fit
+list
+\itemize{
+\item \code{model}: the \code{glm} fit (or a placeholder list on fallback)
+\item \code{fitted_values}: numeric vector of stabilized propensities
+\item \code{formula}: the formula used
+}
 }
 \description{
-Fit propensity score model
+Builds a logistic regression for \code{A} given covariates \code{X}.
+Handles the cases where \code{X} has only an intercept or no columns
+by falling back to \code{A ~ 1}. Also stabilizes fitted probabilities to
+avoid exact 0/1 weights downstream.
 }
+\examples{
+set.seed(1)
+A <- rbinom(100, 1, 0.4)
+X <- cbind(`(Intercept)` = 1, X1 = rnorm(100), X2 = rnorm(100))
+fit <- fit_propensity_model(A, X, weights = NULL)
+head(fit$fitted_values)
+
+}
+\keyword{internal}

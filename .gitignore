@@ -1,7 +1,16 @@
 inst/doc
 .Rproj.user
-.Rhistory
-.RData
 .httr-oauth
 .DS_Store
 .quarto
+
+# pkgdown output (built by CI)
+docs/
+pkgdown/
+inst/doc/
+
+# R build junk
+.DS_Store
+.Rproj.user/
+.Rhistory
+.RData
