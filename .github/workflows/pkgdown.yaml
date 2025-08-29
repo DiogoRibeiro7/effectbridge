@@ -1,8 +1,13 @@
+# .github/workflows/pkgdown.yaml
+# Build pkgdown site for this package and publish it into your blog repo at:
+#   https://diogoribeiro7.github.io/packages/<pkg>/
+# Requires a PAT with "repo" scope stored as PERSONAL_ACCESS_TOKEN in *this* repo.
+
 name: pkgdown
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, master]
     tags: ['*']
   workflow_dispatch:
 
@@ -13,36 +18,37 @@ jobs:
   pkgdown:
     runs-on: ubuntu-latest
 
-    # Restrict concurrency for non-PR runs; allow PRs to run in parallel.
     concurrency:
-      group: ${{ github.event_name == 'pull_request' && format('pkgdown-pr-{0}', github.run_id) || format('pkgdown-{0}-{1}', github.workflow, github.ref) }}
+      group: pkgdown-${{ github.ref }}
       cancel-in-progress: true
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       BLOG_REPO: DiogoRibeiro7/DiogoRibeiro7.github.io
-      PKG_SLUG: ${{ github.event.repository.name }}         # e.g., unconfoundedr
-      BLOG_DEST: packages/${{ github.event.repository.name }}  # packages/unconfoundedr
-      # If your blog uses Jekyll, this URL will serve: https://diogoribeiro7.github.io/packages/<pkg>/
+      PKG_SLUG: ${{ github.event.repository.name }}      
+      BLOG_DEST: packages/${{ github.event.repository.name }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout package repository
+        uses: actions/checkout@v4
 
-      - uses: r-lib/actions/setup-pandoc@v2
+      - name: Setup Pandoc
+        uses: r-lib/actions/setup-pandoc@v2
 
-      - uses: r-lib/actions/setup-r@v2
+      - name: Setup R
+        uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: true
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
+      - name: Install dependencies
+        uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: |
             any::pkgdown
             local::.
           needs: website
 
-      - name: Build site into docs/
-        # build_site_github_pages() is fine too; build_site() keeps things simple here.
+      - name: Build pkgdown site into docs/
         run: pkgdown::build_site(preview = FALSE)
         shell: Rscript {0}
 
@@ -50,58 +56,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ env.BLOG_REPO }}
-          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # PAT with repo:write on the blog repo
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # PAT with repo write access to the blog repo
           path: blog-repo
 
-      - name: Sync package docs to blog (includes dotfiles)
+      - name: Copy package docs to blog (includes dotfiles, cleans removed files)
         run: |
           mkdir -p "blog-repo/${BLOG_DEST}"
-          # Copy *including* dotfiles and delete removed files on destination
           rsync -av --delete docs/ "blog-repo/${BLOG_DEST}/"
-          # Optional: ensure an index.html exists (pkgdown creates it)
-          ls -la "blog-repo/${BLOG_DEST}"
+          echo "Deployed to blog-repo/${BLOG_DEST}/"
+          ls -la "blog-repo/${BLOG_DEST}" | sed -n '1,50p'
 
-      - name: Create/refresh Packages index page
-        run: |
-          mkdir -p blog-repo/packages
-          cat > blog-repo/packages/index.md << 'EOF'
-          ---
-          layout: single
-          title: "R Packages"
-          permalink: /packages/
-          author_profile: true
-          header:
-            image: /assets/images/data_science_1.jpg
-            overlay_image: /assets/images/data_science_1.jpg
-            teaser: /assets/images/data_science_1.jpg
-            show_overlay_excerpt: false
-            twitter_image: /assets/images/data_science_1.jpg
-            og_image: /assets/images/data_science_1.jpg
-          seo_type: article
-          ---
-
-          # R Packages
-
-          This section contains documentation for R packages I've developed.
-
-          ## Available Packages
-
-          - [${{ env.PKG_SLUG }}](/packages/${{ env.PKG_SLUG }}/)
-          EOF
-
-      - name: Ensure navigation link exists
-        run: |
-          NAV="blog-repo/_data/navigation.yml"
-          if [ ! -f "$NAV" ]; then
-            mkdir -p "$(dirname "$NAV")"
-            echo "- title: \"Packages\"\n  url: /packages/" > "$NAV"
-          else
-            if ! grep -qE '(^|\s)Packages(\s|:)' "$NAV"; then
-              printf "\n- title: \"Packages\"\n  url: /packages/\n" >> "$NAV"
-            fi
-          fi
-          echo "---- navigation.yml ----"
-          cat "$NAV"
+      # Optional: if you want CI to also ensure a /packages/ nav exists, add a step here.
+      # Otherwise manage /packages/index.md and navigation.yml manually in the blog repo.
 
       - name: Commit and push changes to blog
         run: |

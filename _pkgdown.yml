@@ -1,8 +1,10 @@
+# _pkgdown.yml — unconfoundedr
+# This URL must match the final location on your blog.
 url: https://diogoribeiro7.github.io/packages/unconfoundedr/
 
 template:
   bootstrap: 5
-  # bootswatch: cosmo
+  bootswatch: cosmo
   bslib:
     primary: "#0054AD"
     navbar-light-brand-color: "#0054AD"
@@ -16,56 +18,61 @@ development:
 
 authors:
   Diogo Ribeiro:
-    href: "https://github.com/DiogoRibeiro7"
+    href: "https://github.com/Diogoribeiro7"
 
 navbar:
   structure:
-    left: [intro, reference, articles, news, tutorials]
-    right: [search, github, blog]
+    left: [reference, articles, news]
+    right: [github, blog]
   components:
+    reference:
+      text: Reference
+      href: reference/index.html
     articles:
       text: Articles
       menu:
         - text: Getting Started
-          href: articles/intro.html
-        - text: Advanced Usage
-          href: articles/advanced.html
-    reference:
-      text: Reference
-      href: reference/index.html
-    github:
-      icon: fab fa-github fa-lg
-      aria-label: GitHub
-      href: https://github.com/DiogoRibeiro7/unconfoundedr
+          href: articles/getting-started.html
     news:
       text: News
       href: news/index.html
+    github:
+      text: GitHub
+      href: https://github.com/DiogoRibeiro7/unconfoundedr
     blog:
       text: "← Back to Blog"
       href: https://diogoribeiro7.github.io/
 
 reference:
   - title: "Main Functions"
-    desc: >
-      The core testing functions of the package
+    desc: "Core testing functions of the package"
     contents:
       - unconfoundedness_test
       - print.unconf_test
 
 home:
+  title: "unconfoundedr"
+  description: >-
+    Test (un)confoundedness by comparing an effect from an RCT-like dataset
+    to the same estimand from an observational dataset. Supports IPW/AIPW,
+    bootstrap CIs, a Wald test, and optional transportability weighting
+    (manual or auto-detected via KS/energy tests).
   sidebar:
     structure: [links, license, community, citation, authors, dev, blog_link]
     components:
       citation:
         title: Citation
-        text: If you use this package, please cite it.
+        text: If you use this package, please cite it (see inst/CITATION).
       community:
         title: Community
         text: >
-          If you have questions or issues about the package, please file an issue on
+          Questions or issues? Open one on
           [GitHub](https://github.com/DiogoRibeiro7/unconfoundedr/issues).
       blog_link:
         title: "Data Science Blog"
         text: >
-          Check out my [data science blog](https://diogoribeiro7.github.io/) for more content 
-          on statistics, machine learning, and R programming.
+          Visit my [blog](https://diogoribeiro7.github.io/) for more on statistics,
+          machine learning, and R.
+
+destination: docs
+
