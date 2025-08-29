@@ -45,7 +45,6 @@ jobs:
           extra-packages: |
             any::roxygen2
             any::pkgdown
-            local::.
           needs: website
 
       - name: Document (generate NAMESPACE & man/)

@@ -1,13 +1,14 @@
 # .github/dependabot.yml - Automated dependency updates
 version: 2
 updates:
-  # Update GitHub Actions
+  # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
       time: "05:00"
+      timezone: "Europe/Lisbon"
     open-pull-requests-limit: 5
     assignees:
       - "DiogoRibeiro7"
@@ -18,11 +19,27 @@ updates:
       prefix: "🔧"
       prefix-development: "🔧"
 
-  # Update R package dependencies (if using renv)
-  - package-ecosystem: "gitsubmodule"
+  # Python (Poetry projects are supported under 'pip')
+  # Remove this block if the repo has no Python/Poetry.
+  - package-ecosystem: "pip"
     directory: "/"
     schedule:
-      interval: "monthly"
+      interval: "weekly"
+      day: "monday"
+      time: "05:30"
+      timezone: "Europe/Lisbon"
+    open-pull-requests-limit: 5
+    assignees:
+      - "DiogoRibeiro7"
     labels:
       - "dependencies"
-      - "submodules"
+      - "python"
+    commit-message:
+      prefix: "deps"
+    # Optional grouping to reduce PR noise (requires enabled feature on your org)
+    groups:
+      poetry-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"

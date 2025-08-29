@@ -1,79 +1,80 @@
 # Security and quality assurance workflow
 name: Security & Quality
-
 on:
   push:
     branches: [main, develop]
   pull_request:
     branches: [main]
   schedule:
-    # Run weekly security scans
     - cron: '0 6 * * 1'
   workflow_dispatch:
-
 permissions:
   contents: read
   security-events: write
   actions: read
-
+  pull-requests: write
 jobs:
+  # ----------------------------
   # Dependency vulnerability scanning
+  # ----------------------------
   dependency-scan:
     name: Dependency Scan
     runs-on: ubuntu-latest
-    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Setup R
         uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: true
-
-      - name: Install oysteR
-        run: |
-          install.packages(c("remotes", "oysteR"))
-        shell: Rscript {0}
-
+      # Use pak resolver + cache + system-requirements resolution
+      - name: Setup R dependencies (oysteR)
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::oysteR
+          needs: dependencies
       - name: Scan R packages for vulnerabilities
+        id: oysterr
         run: |
           library(oysteR)
-          
-          # Get installed packages
-          installed_pkgs <- as.data.frame(installed.packages())
-          
-          # Check for known vulnerabilities
+
+          # Audit installed packages (in runner env)
           vulns <- audit_installed_r_packages()
-          
+
           if (nrow(vulns) > 0) {
             cat("🚨 Vulnerabilities found:\n")
             print(vulns)
-            
-            # Create SARIF file for GitHub Security tab
+
+            # Write SARIF next to workspace root
             write_sarif(vulns, "r-vulnerabilities.sarif")
-            
-            # Fail if critical vulnerabilities
-            if (any(vulns$severity == "HIGH")) {
-              stop("High severity vulnerabilities found!")
+
+            # Mark high severity as failure (keep job failing)
+            if (any(toupper(vulns$severity) %in% c("HIGH","CRITICAL"))) {
+              quit(status = 2)
             }
           } else {
             cat("✅ No known vulnerabilities found in R packages\n")
           }
         shell: Rscript {0}
-        continue-on-error: true
-
+        continue-on-error: true # keep pipeline informative
+      # Upload SARIF from the SAME job that created it
+      - name: Upload SARIF (oysteR)
+        if: always() && hashFiles('r-vulnerabilities.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: r-vulnerabilities.sarif
+          category: r-packages
+  # ----------------------------
   # Secret scanning
+  # ----------------------------
   secret-scan:
     name: Secret Scan
     runs-on: ubuntu-latest
-    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - name: Run TruffleHog OSS
         uses: trufflesecurity/trufflehog@main
         with:
@@ -81,121 +82,109 @@ jobs:
           base: main
           head: HEAD
           extra_args: --debug --only-verified
-
+  # ----------------------------
   # License compliance
+  # ----------------------------
   license-check:
     name: License Compliance
     runs-on: ubuntu-latest
-    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Setup R
         uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: true
-
+      - name: Install deps for license check
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::remotes
+          needs: dependencies
       - name: Check license compliance
         run: |
           cat("⚖️ Checking license compliance...\n")
-          
-          # Check DESCRIPTION file
+
+          # DESCRIPTION license
           desc <- read.dcf("DESCRIPTION")
           license <- desc[, "License"]
           cat("Package license:", license, "\n")
-          
-          # Install dependencies and check their licenses
-          install.packages("remotes")
+
+          # Ensure deps installed (no upgrade churn)
           remotes::install_deps(dependencies = TRUE, upgrade = "never")
-          
-          # Get dependency licenses
-          deps <- as.data.frame(installed.packages())
+
+          # Collect licenses of installed deps
+          deps <- as.data.frame(installed.packages(), stringsAsFactors = FALSE)
           dep_licenses <- deps[, c("Package", "License")]
           dep_licenses <- dep_licenses[!is.na(dep_licenses$License), ]
-          
-          # Check for restrictive licenses
-          restrictive_licenses <- c("GPL-3", "AGPL", "SSPL")
-          restrictive_deps <- dep_licenses[
-            grepl(paste(restrictive_licenses, collapse = "|"), dep_licenses$License), 
-          ]
-          
+
+          restrictive_patterns <- c("AGPL", "GPL-3", "SSPL")
+          restrictive_rows <- grep(paste(restrictive_patterns, collapse="|"), dep_licenses$License, ignore.case = TRUE)
+          restrictive_deps <- dep_licenses[restrictive_rows, , drop = FALSE]
+
           if (nrow(restrictive_deps) > 0) {
             cat("⚠️ Dependencies with restrictive licenses:\n")
             print(restrictive_deps)
+          } else {
+            cat("✅ No restrictive licenses detected among dependencies\n")
           }
-          
-          cat("✅ License compliance check completed\n")
         shell: Rscript {0}
-
+  # ----------------------------
   # Documentation quality
+  # ----------------------------
   docs-quality:
     name: Documentation Quality
     runs-on: ubuntu-latest
-    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Setup R
         uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: true
-
-      - name: Install dependencies
-        run: |
-          install.packages(c("devtools", "roxygen2", "spelling"))
-        shell: Rscript {0}
-
+      # Install dev tools + package dependencies
+      - name: Setup R dependencies (docs)
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: |
+            any::devtools
+            any::roxygen2
+            any::spelling
+          needs: docs
       - name: Check documentation coverage
         run: |
           cat("📚 Checking documentation coverage...\n")
-          
-          devtools::load_all()
-          
-          # Get all exported functions
+          devtools::load_all(quiet = TRUE)
+
           exports <- getNamespaceExports("unconfoundedr")
-          
-          # Check which have documentation
           documented <- character(0)
+
           for (fn in exports) {
-            help_file <- utils::help(fn, package = "unconfoundedr")
-            if (length(help_file) > 0) {
-              documented <- c(documented, fn)
-            }
+            hf <- utils::help(fn, package = "unconfoundedr")
+            if (length(hf) > 0) documented <- c(documented, fn)
           }
-          
+
           undocumented <- setdiff(exports, documented)
-          
           if (length(undocumented) > 0) {
             cat("⚠️ Undocumented functions:\n")
             cat(paste(undocumented, collapse = ", "), "\n")
-            
             for (fn in undocumented) {
               cat(sprintf("::warning::Function '%s' lacks documentation\n", fn))
             }
           } else {
             cat("✅ All exported functions are documented\n")
           }
-          
-          coverage <- length(documented) / length(exports) * 100
+
+          coverage <- if (length(exports)) length(documented) / length(exports) * 100 else 100
           cat(sprintf("Documentation coverage: %.1f%%\n", coverage))
         shell: Rscript {0}
-
       - name: Spell check
         run: |
           cat("📝 Running spell check...\n")
-          
-          # Spell check documentation
           spelling_errors <- spelling::spell_check_package()
-          
           if (nrow(spelling_errors) > 0) {
-            cat("Spelling errors found:\n")
-            print(spelling_errors)
-            
-            for (i in 1:nrow(spelling_errors)) {
-              cat(sprintf(
-                "::warning file=%s::%s (found: %s)\n",
+            cat("Spelling errors found:\n"); print(spelling_errors)
+            for (i in seq_len(nrow(spelling_errors))) {
+              cat(sprintf("::warning file=%s::%s (found: %s)\n",
                 spelling_errors$file[i],
                 spelling_errors$word[i],
                 spelling_errors$found[i]
@@ -205,40 +194,39 @@ jobs:
             cat("✅ No spelling errors found\n")
           }
         shell: Rscript {0}
-
+  # ----------------------------
   # Performance regression testing
+  # ----------------------------
   performance-check:
     name: Performance Check
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
-    
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@v4
-
       - name: Setup R
         uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: true
-
-      - name: Install dependencies
-        run: |
-          install.packages(c("remotes", "bench", "profvis"))
-          remotes::install_deps(dependencies = TRUE)
-        shell: Rscript {0}
-
+      - name: Setup R dependencies (bench)
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: |
+            any::bench
+            any::pkgload
+            any::devtools
+          needs: compute
+      # Use pkgload::load_all so we don’t need a full install
       - name: Run performance benchmarks
         run: |
           library(bench)
-          library(unconfoundedr)
-          
+          pkgload::load_all(export_all = TRUE, quiet = TRUE)
+
           cat("🏃 Running performance benchmarks...\n")
-          
           set.seed(42)
           rct_data <- generate_rct_data(n = 200)
           obs_data <- generate_obs_data(n = 400)
-          
-          # Benchmark main function
+
           result <- bench::mark(
             basic_test = unconfoundedness_test(
               rct_data, obs_data, Y ~ A + X1 + X2,
@@ -247,139 +235,110 @@ jobs:
             iterations = 3,
             check = FALSE
           )
-          
-          cat("Performance results:\n")
+
           print(result)
-          
-          # Check for reasonable performance (< 30 seconds for basic test)
+
+          # 30s threshold example
           if (as.numeric(result$median) > 30) {
-            cat("::warning::Performance regression detected - basic test taking > 30 seconds\n")
+            cat("::warning::Performance regression - basic test > 30s\n")
           } else {
             cat("✅ Performance within acceptable bounds\n")
           }
-          
-          # Save results for comparison
+
           saveRDS(result, "performance_results.rds")
         shell: Rscript {0}
-
       - name: Upload performance results
         uses: actions/upload-artifact@v4
         with:
           name: performance-results
           path: performance_results.rds
-
+  # ----------------------------
   # Security policy compliance
+  # ----------------------------
   security-policy:
     name: Security Policy Check
     runs-on: ubuntu-latest
-    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Check security policy
         run: |
           echo "🔒 Security Policy Compliance Check"
-          
-          # Check if SECURITY.md exists
+
           if [ -f "SECURITY.md" ]; then
             echo "✅ Security policy found"
           else
             echo "⚠️ No security policy found - consider adding SECURITY.md"
             echo "::warning::Consider adding a SECURITY.md file with vulnerability reporting instructions"
           fi
-          
-          # Check for sensitive file patterns
+
           echo "🔍 Scanning for sensitive files..."
-          
           sensitive_patterns=(
-            "*.key"
-            "*.pem" 
-            "*.p12"
-            "*.pfx"
-            ".env"
-            "credentials.json"
-            "config.json"
+            "*.key" "*.pem" "*.p12" "*.pfx" ".env"
+            "credentials.json" "config.json"
           )
-          
           for pattern in "${sensitive_patterns[@]}"; do
             if find . -name "$pattern" -not -path "./.git/*" | grep -q .; then
               echo "::error::Sensitive file pattern found: $pattern"
-            fi
+            fi"
           done
-          
-          # Check for hardcoded secrets (basic patterns)
-          echo "🔍 Basic secret pattern scan..."
-          
-          if grep -r -i "password\s*=" --include="*.R" --include="*.Rmd" .; then
-            echo "::warning::Potential hardcoded password found"
-          fi
-          
-          if grep -r -i "api[_-]key\s*=" --include="*.R" --include="*.Rmd" .; then
-            echo "::warning::Potential hardcoded API key found"
-          fi
-          
-          if grep -r -i "token\s*=" --include="*.R" --include="*.Rmd" .; then
-            echo "::warning::Potential hardcoded token found"
-          fi
-          
-          echo "✅ Security policy check completed"
 
+          echo "🔍 Basic secret pattern scan..."
+          grep -r -i -E "password\s*=" --include="*.R" --include="*.Rmd" . && echo "::warning::Potential hardcoded password found" || true
+          grep -r -i -E "api[_-]key\s*=" --include="*.R" --include="*.Rmd" . && echo "::warning::Potential hardcoded API key found" || true
+          grep -r -i -E "token\s*=" --include="*.R" --include="*.Rmd" . && echo "::warning::Potential hardcoded token found" || true
+
+          echo "✅ Security policy check completed"
+  # ----------------------------
   # Final security report
+  # ----------------------------
   security-summary:
     name: Security Summary
     needs: [dependency-scan, code-quality, secret-scan, license-check, docs-quality, security-policy]
     runs-on: ubuntu-latest
     if: always()
-    
     steps:
       - name: Create security summary
         run: |
           echo "# Security & Quality Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
-          # Dependency scan results
+
           if [[ "${{ needs.dependency-scan.result }}" == "success" ]]; then
             echo "✅ **Dependency Scan**: No critical vulnerabilities" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **Dependency Scan**: Issues found" >> $GITHUB_STEP_SUMMARY
           fi
-          
-          # Code quality results
+
           if [[ "${{ needs.code-quality.result }}" == "success" ]]; then
             echo "✅ **Code Quality**: Meets standards" >> $GITHUB_STEP_SUMMARY
           else
             echo "⚠️ **Code Quality**: Issues found" >> $GITHUB_STEP_SUMMARY
           fi
-          
-          # Secret scan results
+
           if [[ "${{ needs.secret-scan.result }}" == "success" ]]; then
             echo "✅ **Secret Scan**: No secrets detected" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **Secret Scan**: Potential secrets found" >> $GITHUB_STEP_SUMMARY
           fi
-          
-          # License check results
+
           if [[ "${{ needs.license-check.result }}" == "success" ]]; then
             echo "✅ **License Compliance**: Compliant" >> $GITHUB_STEP_SUMMARY
           else
             echo "⚠️ **License Compliance**: Review needed" >> $GITHUB_STEP_SUMMARY
           fi
-          
-          # Documentation results
+
           if [[ "${{ needs.docs-quality.result }}" == "success" ]]; then
             echo "✅ **Documentation**: High quality" >> $GITHUB_STEP_SUMMARY
           else
             echo "⚠️ **Documentation**: Improvements needed" >> $GITHUB_STEP_SUMMARY
           fi
-          
-          # Security policy results
+
           if [[ "${{ needs.security-policy.result }}" == "success" ]]; then
             echo "✅ **Security Policy**: Compliant" >> $GITHUB_STEP_SUMMARY
           else
             echo "⚠️ **Security Policy**: Review needed" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "## Recommendations" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -387,15 +346,14 @@ jobs:
           echo "- Keep dependencies updated" >> $GITHUB_STEP_SUMMARY
           echo "- Follow security best practices" >> $GITHUB_STEP_SUMMARY
           echo "- Maintain high code quality standards" >> $GITHUB_STEP_SUMMARY
-
       - name: Comment on PR (if applicable)
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           script: |
             const { owner, repo } = context.repo;
             const issue_number = context.issue.number;
-            
+
             const results = {
               dependency: '${{ needs.dependency-scan.result }}',
               quality: '${{ needs.code-quality.result }}',
@@ -404,138 +362,104 @@ jobs:
               docs: '${{ needs.docs-quality.result }}',
               policy: '${{ needs.security-policy.result }}'
             };
-            
+
             const passed = Object.values(results).filter(r => r === 'success').length;
             const total = Object.keys(results).length;
-            
+
             const body = `## 🔒 Security & Quality Check Results
-            
+
             **Score: ${passed}/${total} checks passed**
-            
+
             ${results.dependency === 'success' ? '✅' : '❌'} Dependency scan
             ${results.quality === 'success' ? '✅' : '⚠️'} Code quality
-            ${results.secrets === 'success' ? '✅' : '❌'} Secret scan  
+            ${results.secrets === 'success' ? '✅' : '❌'} Secret scan
             ${results.license === 'success' ? '✅' : '⚠️'} License compliance
             ${results.docs === 'success' ? '✅' : '⚠️'} Documentation quality
             ${results.policy === 'success' ? '✅' : '⚠️'} Security policy
-            
+
             ${passed === total ? '🎉 All security and quality checks passed!' : '⚠️ Please review the failed checks above.'}
             `;
-            
-            await github.rest.issues.createComment({
-              owner,
-              repo,
-              issue_number,
-              body
-            });-error: true
 
-      - name: Upload SARIF file
-        if: always()
-        uses: github/codeql-action/upload-sarif@v2
-        with:
-          sarif_file: r-vulnerabilities.sarif
-          category: r-packages
-
+            await github.rest.issues.createComment({ owner, repo, issue_number, body });
+        continue-on-error: true # <-- fixed YAML typo
+  # ----------------------------
   # Code quality analysis
+  # ----------------------------
   code-quality:
     name: Code Quality Analysis
     runs-on: ubuntu-latest
-    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Full history for better analysis
-
+          fetch-depth: 0
       - name: Setup R
         uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: true
-
-      - name: Install analysis packages
-        run: |
-          install.packages(c(
-            "lintr", "styler", "cyclocomp", "devtools",
-            "goodpractice", "covr"
-          ))
-        shell: Rscript {0}
-
+      - name: Setup R dependencies (QA)
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: |
+            any::lintr
+            any::styler
+            any::cyclocomp
+            any::devtools
+            any::goodpractice
+            any::covr
+          needs: check
       - name: Style check
         run: |
           cat("🎨 Checking code style...\n")
-          style_issues <- styler::style_pkg(dry = "on")
-          
-          if (length(style_issues) > 0) {
-            cat("Style issues found:\n")
-            print(style_issues)
+          issues <- styler::style_pkg(dry = "on")
+          if (length(issues)) {
+            cat("Style issues found:\n"); print(issues)
           } else {
             cat("✅ Code style is consistent\n")
           }
         shell: Rscript {0}
-
       - name: Lint analysis
         run: |
           cat("🔍 Running lint analysis...\n")
           lints <- lintr::lint_package(
             linters = lintr::linters_with_defaults(
               line_length_linter = lintr::line_length_linter(120),
-              object_usage_linter = NULL  # Can be noisy
+              object_usage_linter = NULL
             )
           )
-          
-          if (length(lints) > 0) {
-            cat("Lint issues found:\n")
+          if (length(lints)) {
             print(lints)
-            
-            # Create annotations
-            for (lint in lints) {
-              cat(sprintf(
-                "::warning file=%s,line=%d,col=%d::%s\n",
-                lint$filename, lint$line_number, lint$column_number, lint$message
-              ))
+            for (l in lints) {
+              cat(sprintf("::warning file=%s,line=%d,col=%d::%s\n",
+                l$filename, l$line_number, l$column_number, l$message))
             }
           } else {
             cat("✅ No lint issues found\n")
           }
         shell: Rscript {0}
-
       - name: Complexity analysis
         run: |
           cat("🧮 Analyzing code complexity...\n")
-          
-          r_files <- list.files("R", pattern = "\\.R$", full.names = TRUE)
-          
-          for (file in r_files) {
-            complexity <- cyclocomp::cyclocomp_package_dir(".")
-            high_complexity <- complexity[complexity$cyclocomp > 10, ]
-            
-            if (nrow(high_complexity) > 0) {
-              cat("High complexity functions (>10):\n")
-              print(high_complexity)
-              
-              for (i in 1:nrow(high_complexity)) {
-                cat(sprintf(
-                  "::warning file=%s::%s has cyclomatic complexity %d (consider refactoring)\n",
-                  high_complexity$filename[i],
-                  high_complexity$name[i], 
-                  high_complexity$cyclocomp[i]
-                ))
-              }
+          complexity <- cyclocomp::cyclocomp_package_dir(".")
+          high <- complexity[complexity$cyclocomp > 10, ]
+          if (nrow(high)) {
+            cat("High complexity functions (>10):\n"); print(high)
+            for (i in seq_len(nrow(high))) {
+              cat(sprintf("::warning file=%s::%s has cyclomatic complexity %d (consider refactoring)\n",
+                high$filename[i], high$name[i], high$cyclocomp[i]))
             }
+          } else {
+            cat("✅ No functions exceed complexity threshold\n")
           }
         shell: Rscript {0}
-
       - name: Good practice check
         run: |
           cat("✨ Running good practice checks...\n")
-          
           tryCatch({
             gp <- goodpractice::gp(quiet = FALSE)
             print(gp)
-            
-            # Check for specific issues
             if (length(goodpractice::results(gp)) > 0) {
-              cat("Good practice issues found:\n")
+              cat("Good practice issues:\n")
               for (issue in goodpractice::results(gp)) {
                 cat(sprintf("::warning::%s\n", issue))
               }
