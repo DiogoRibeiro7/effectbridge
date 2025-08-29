@@ -3,7 +3,7 @@ Title: Test Unconfoundedness by Comparing RCT and Observational Effects
 Version: 0.2.0
 Authors@R: c(person(given = "Diogo", family = "Ribeiro", role = c("aut","cre"),
                     email = "diogo.debastos.ribeiro@gmail.com",
-                    comment = c(ORCID = "0000-0000-0000-0000")))
+                    comment = c(ORCID = "0009-0001-2022-7072")))
 Description: Comprehensive toolkit for testing unmeasured confounding by
     comparing marginal treatment effects between RCT-like and observational
     datasets. Features multiple estimators (IPW, AIPW, TMLE, G-computation, 
