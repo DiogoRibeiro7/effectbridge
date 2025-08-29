@@ -2,6 +2,7 @@
 version: 2
 updates:
   # GitHub Actions
+  # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -18,3 +19,28 @@ updates:
     commit-message:
       prefix: "🔧"
       prefix-development: "🔧"
+
+  # Python (Poetry projects are supported under 'pip')
+  # Remove this block if the repo has no Python/Poetry.
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "05:30"
+      timezone: "Europe/Lisbon"
+    open-pull-requests-limit: 5
+    assignees:
+      - "DiogoRibeiro7"
+    labels:
+      - "dependencies"
+      - "python"
+    commit-message:
+      prefix: "deps"
+    # Optional grouping to reduce PR noise (requires enabled feature on your org)
+    groups:
+      poetry-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
