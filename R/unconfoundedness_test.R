@@ -1,61 +1,67 @@
 # unconfoundedness_test.R
 # R >= 4.1
 
-#' @title Test unconfoundedness with optional transport weighting (auto/KS/energy)
+#' @title Test unconfoundedness with comprehensive diagnostics and multiple estimators
 #' @description
 #' Compare a marginal treatment effect ω in an RCT-like dataset with the same
-#' estimand in an observational dataset. Supports:
-#' - Estimators: IPW or AIPW (doubly robust).
-#' - Inference: bootstrap CI for Δ = ω_obs − ω_rct; Wald-style z test.
-#' - Transport weighting:
-#'   * "none": no reweighting;
-#'   * "rct_to_obs": always reweight RCT to OBS covariates via density ratio logistic;
-#'   * "auto": run shift tests (KS/energy) and reweight only if shift is detected.
+#' estimand in an observational dataset. Enhanced version supports:
+#' - Estimators: IPW, AIPW, TMLE, G-computation, matching
+#' - Effect measures: risk difference, risk ratio, odds ratio
+#' - Inference: bootstrap CI, analytical SE, robust SE
+#' - Transport weighting with auto-detection
+#' - Comprehensive diagnostics and visualization
+#' - Sensitivity analysis tools
 #'
-#' @param data_rct,data_obs data.frame with same Y/A definitions and covariates.
-#' @param formula model formula `Y ~ A + X1 + X2`. A must be binary and the first RHS term.
-#' @param estimator "aipw" (default) or "ipw".
-#' @param stabilize logical; stabilized IPW (default TRUE).
-#' @param trim length-2 numeric in [0,1] for weight trimming (e.g., c(0.01,0.99)); NULL disables.
-#' @param family_y "gaussian" or "binomial" (for AIPW outcome regression and checks).
-#' @param transport "none", "rct_to_obs", or "auto" (default "none").
-#' @param auto_method which tests to use under `transport="auto"`: "both" (default), "ks", or "energy".
-#' @param auto_alpha significance level for shift tests (default 0.01).
-#' @param auto_energy_R number of permutations for energy test (default 199). Ignored if `energy` not installed.
-#' @param B bootstrap replicates for Δ CI (default 1000).
-#' @param alpha CI tail (default 0.05 for 95% CI).
-#' @param seed RNG seed or NULL.
-#' @return list with estimates, CI, p-values, settings, and diagnostics (incl. auto decision).
+#' @param data_rct,data_obs data.frame with same Y/A definitions and covariates
+#' @param formula model formula `Y ~ A + X1 + X2`. A must be binary and the first RHS term
+#' @param estimator character: "aipw" (default), "ipw", "tmle", "gcomp", "matching"
+#' @param effect_measure character: "rd" (risk difference), "rr" (risk ratio), "or" (odds ratio)
+#' @param stabilize logical; stabilized IPW (default TRUE)
+#' @param trim length-2 numeric in [0,1] for weight trimming; NULL disables
+#' @param family_y "gaussian" or "binomial"
+#' @param transport "none", "rct_to_obs", or "auto" (default "none")
+#' @param auto_method "both", "ks", "energy" for shift detection
+#' @param auto_alpha significance level for shift tests (default 0.01)
+#' @param auto_energy_R permutations for energy test (default 199)
+#' @param inference_method "bootstrap", "analytical", "robust"
+#' @param B bootstrap replicates (default 1000)
+#' @param alpha CI level (default 0.05 for 95% CI)
+#' @param parallel logical; use parallel processing for bootstrap
+#' @param n_cores integer; cores for parallel processing (NULL = auto-detect)
+#' @param seed RNG seed or NULL
+#' @param validate logical; perform extensive input validation
+#' @return enhanced unconf_test object with comprehensive diagnostics
 #' @examples
 #' \dontrun{
-#' set.seed(1)
-#' gen_rct <- function(n){
-#'   X1 <- rnorm(n); X2 <- rbinom(n,1,0.4)
-#'   A  <- rbinom(n,1,0.5)
-#'   Y0 <- 0.5 + 0.5*X1 + 0.3*X2 + rnorm(n)
-#'   Y1 <- Y0 + 1.0
-#'   data.frame(Y=ifelse(A==1,Y1,Y0),A,X1,X2)
+#' # Enhanced example with multiple estimators
+#' set.seed(42)
+#' data_rct <- generate_rct_data(n = 800)
+#' data_obs <- generate_obs_data(n = 2000, confounding = TRUE)
+#'
+#' # Comprehensive test
+#' result <- unconfoundedness_test(
+#'   data_rct, data_obs,
+#'   Y ~ A + X1 + X2,
+#'   estimator = "aipw",
+#'   effect_measure = "rd",
+#'   transport = "auto",
+#'   inference_method = "bootstrap",
+#'   B = 1000,
+#'   parallel = TRUE,
+#'   validate = TRUE
+#' )
+#'
+#' print(result)
+#' plot(result)
+#' summary(result)
 #' }
-#' gen_obs <- function(n){
-#'   X1 <- rnorm(n, 0.4); X2 <- rbinom(n,1,0.7)  # shift
-#'   A  <- rbinom(n,1,plogis(-0.2 + 0.8*X1 + 0.6*X2))
-#'   U  <- rnorm(n)
-#'   Y0 <- 0.5 + 0.5*X1 + 0.3*X2 + 0.3*U + rnorm(n)
-#'   Y1 <- Y0 + 1.0
-#'   data.frame(Y=ifelse(A==1,Y1,Y0),A,X1,X2)
-#' }
-#' d_rct <- gen_rct(800); d_obs <- gen_obs(2000)
-#' out <- unconfoundedness_test(d_rct, d_obs, Y ~ A + X1 + X2,
-#'   estimator="aipw", family_y="gaussian",
-#'   transport="auto", auto_method="both", auto_alpha=0.01,
-#'   B=500, seed=42)
-#' print(out); out$diagnostics$auto
-#' }
+#' @export
 unconfoundedness_test <- function(
   data_rct,
   data_obs,
   formula,
-  estimator = c("aipw", "ipw"),
+  estimator = c("aipw", "ipw", "tmle", "gcomp", "matching"),
+  effect_measure = c("rd", "rr", "or"),
   stabilize = TRUE,
   trim = c(0.01, 0.99),
   family_y = c("gaussian", "binomial"),
@@ -63,583 +69,1614 @@ unconfoundedness_test <- function(
   auto_method = c("both", "ks", "energy"),
   auto_alpha = 0.01,
   auto_energy_R = 199L,
+  inference_method = c("bootstrap", "analytical", "robust"),
   B = 1000L,
   alpha = 0.05,
-  seed = NULL
+  parallel = FALSE,
+  n_cores = NULL,
+  seed = NULL,
+  validate = TRUE
 ) {
-  # ---------------- Args & basic checks ----------------
-  stopifnot(is.data.frame(data_rct), is.data.frame(data_obs))
+  # Match arguments
   estimator <- match.arg(estimator)
+  effect_measure <- match.arg(effect_measure)
   family_y <- match.arg(family_y)
   transport <- match.arg(transport)
   auto_method <- match.arg(auto_method)
-  stopifnot(is.numeric(alpha) && alpha > 0 && alpha < 1)
-  stopifnot(is.numeric(auto_alpha) && auto_alpha > 0 && auto_alpha < 1)
-  stopifnot(is.null(seed) || (is.numeric(seed) && length(seed) == 1))
-  if (!is.null(trim)) {
-    stopifnot(
-      is.numeric(trim),
-      length(trim) == 2,
-      trim[1] < trim[2],
-      all(trim >= 0),
-      all(trim <= 1)
-    )
-  }
+  inference_method <- match.arg(inference_method)
 
-  # ---------------- Parse formula ----------------
-  tt <- terms(formula)
-  vars <- all.vars(formula)
-  if (length(vars) < 2L) {
-    stop("Formula must be Y ~ A + Xs.")
-  }
-  y_name <- vars[1L]
-  rhs_terms <- attr(tt, "term.labels")
-  if (length(rhs_terms) < 1L) {
-    stop("Formula RHS must include treatment A (binary).")
-  }
-  a_name <- strsplit(rhs_terms[1L], ":|\\*")[[1L]][1L] # first symbol treated as A
-
-  req <- unique(c(vars, a_name, y_name))
-  if (!all(req %in% names(data_rct))) {
-    stop("Missing formula columns in data_rct.")
-  }
-  if (!all(req %in% names(data_obs))) {
-    stop("Missing formula columns in data_obs.")
-  }
-
-  # ---------------- Coerce A to {0,1} ----------------
-  coerce_A <- function(df, a) {
-    v <- df[[a]]
-    if (is.factor(v)) {
-      v <- droplevels(v)
-    }
-    if (is.logical(v)) {
-      v <- as.integer(v)
-    }
-    if (is.character(v)) {
-      uv <- unique(v)
-      if (length(uv) != 2) {
-        stop("Character A must have 2 levels.")
-      }
-      v <- as.integer(v == uv[2L])
-    }
-    if (is.factor(v)) {
-      v <- as.integer(v == levels(v)[2L])
-    }
-    if (!is.numeric(v)) {
-      stop("A must be numeric/logic/factor/character 2-level.")
-    }
-    if (!all(v %in% c(0, 1))) {
-      u <- sort(unique(v))
-      stop(sprintf("A must be 0/1. Found: %s", paste(u, collapse = ", ")))
-    }
-    df[[a]] <- v
-    df
-  }
-  data_rct <- coerce_A(data_rct, a_name)
-  data_obs <- coerce_A(data_obs, a_name)
-
-  # ---------------- Frames & checks ----------------
-  mf_rct <- model.frame(formula, data_rct)
-  mf_obs <- model.frame(formula, data_obs)
-  Y_r <- mf_rct[[y_name]]
-  A_r <- mf_rct[[a_name]]
-  Y_o <- mf_obs[[y_name]]
-  A_o <- mf_obs[[a_name]]
-  if (family_y == "binomial") {
-    if (!all(Y_r %in% c(0, 1)) || !all(Y_o %in% c(0, 1))) {
-      stop("With family_y='binomial', Y must be 0/1 in both datasets.")
-    }
-  } else {
-    if (!is.numeric(Y_r) || !is.numeric(Y_o)) {
-      stop("With family_y='gaussian', Y must be numeric.")
-    }
-  }
-
-  # ---------------- Covariates (exclude A) ----------------
-  rhs_form <- reformulate(rhs_terms, response = y_name)
-  X_terms <- setdiff(attr(terms(rhs_form), "term.labels"), a_name)
-  form_X <- if (length(X_terms)) reformulate(X_terms) else ~1
-  X_r <- model.matrix(form_X, data = data_rct)
-  X_o <- model.matrix(form_X, data = data_obs)
-
-  # ---------------- Auto shift detection (if requested) ----------------
-  auto_diag <- NULL
-  transport_applied <- transport
-
-  # KS: univariate two-sample across each column (except intercept)
-  auto_detect_shift_ks <- function(Xr, Xo, alpha) {
-    cols <- setdiff(colnames(Xr), "(Intercept)")
-    if (length(cols) == 0L) {
-      return(list(
-        available = TRUE,
-        pvals = NULL,
-        padj = NULL,
-        reject_any = FALSE,
-        rejected_cols = character(0)
-      ))
-    }
-    pvals <- vapply(
-      cols,
-      function(cn) {
-        suppressWarnings(stats::ks.test(Xr[, cn], Xo[, cn])$p.value)
-      },
-      numeric(1)
-    )
-    padj <- stats::p.adjust(pvals, method = "BH")
-    reject <- padj < alpha
-    list(
-      available = TRUE,
-      pvals = pvals,
-      padj = padj,
-      reject_any = any(reject),
-      rejected_cols = names(padj)[reject]
-    )
-  }
-
-  # Energy: multivariate 2-sample E-test with permutations
-  auto_detect_shift_energy <- function(Xr, Xo, alpha, R) {
-    have_energy <- requireNamespace("energy", quietly = TRUE)
-    if (!have_energy) {
-      return(list(available = FALSE, p_value = NA_real_, reject = FALSE, R = R))
-    }
-    Z <- rbind(Xr, Xo)
-    sizes <- c(nrow(Xr), nrow(Xo))
-    et <- energy::eqdist.etest(Z, sizes = sizes, R = as.integer(R))
-    list(
-      available = TRUE,
-      p_value = et$p.value,
-      reject = (et$p.value < alpha),
-      R = R
-    )
-  }
-
-  if (transport == "auto") {
-    ks_res <- if (auto_method %in% c("both", "ks")) {
-      auto_detect_shift_ks(X_r, X_o, auto_alpha)
-    } else {
-      NULL
-    }
-    en_res <- if (auto_method %in% c("both", "energy")) {
-      auto_detect_shift_energy(X_r, X_o, auto_alpha, auto_energy_R)
-    } else {
-      NULL
-    }
-
-    detected <- FALSE
-    used <- character(0)
-    if (!is.null(ks_res) && ks_res$available) {
-      if (ks_res$reject_any) {
-        detected <- TRUE
-        used <- c(used, "ks")
-      }
-    }
-    if (!is.null(en_res) && en_res$available) {
-      if (en_res$reject) {
-        detected <- TRUE
-        used <- c(used, "energy")
-      }
-    }
-    # If method="energy" but not available, fallback to "ks" only (document in diagnostics)
-    if (auto_method == "energy" && (is.null(en_res) || !en_res$available)) {
-      # Nothing else to run; detected stays FALSE unless ks was also requested.
-      used <- c(used, "energy_unavailable")
-    }
-
-    transport_applied <- if (detected) "rct_to_obs" else "none"
-    auto_diag <- list(
-      requested_method = auto_method,
-      alpha = auto_alpha,
-      detected = detected,
-      tests_used = used,
-      ks = ks_res,
-      energy = en_res
-    )
-  }
-
-  # ---------------- Transport weights (applied or not) ----------------
-  density_ratio_weights <- function(Xr, Xo) {
-    stopifnot(is.matrix(Xr), is.matrix(Xo))
-    Z <- rbind(Xr, Xo)
-    lab <- c(rep(0L, nrow(Xr)), rep(1L, nrow(Xo))) # 0=RCT, 1=OBS
-    df <- data.frame(S = lab, Z)
-    if ("(Intercept)" %in% names(df)) {
-      df[["(Intercept)"]] <- NULL
-    }
-    fit <- stats::glm(S ~ ., data = df, family = stats::binomial())
-    pr <- stats::predict(fit, newdata = data.frame(Z = Xr), type = "response")
-    pr <- pmin(pmax(as.numeric(pr), 1e-6), 1 - 1e-6)
-    w <- pr / (1 - pr)
-    w / mean(w)
-  }
-  w_rct <- if (transport_applied == "rct_to_obs") {
-    density_ratio_weights(X_r, X_o)
-  } else {
-    rep(1, nrow(X_r))
-  }
-  w_obs <- rep(1, nrow(X_o))
-
-  # ---------------- Estimators (weighted) ----------------
-  fit_ps <- function(A, X, samp_w) {
-    df <- data.frame(A = A, X)
-    if ("(Intercept)" %in% names(df)) {
-      df[["(Intercept)"]] <- NULL
-    }
-    suppressWarnings({
-      fit <- stats::glm(
-        A ~ .,
-        data = df,
-        family = stats::binomial(),
-        weights = samp_w
-      )
-    })
-    p <- pmin(pmax(as.numeric(stats::fitted(fit)), 1e-6), 1 - 1e-6)
-    list(p = p, fit = fit)
-  }
-  fit_outcome_models <- function(Y, A, X, family, samp_w) {
-    fam <- if (family == "binomial") stats::binomial() else stats::gaussian()
-    df1 <- data.frame(Y = Y[A == 1], X[A == 1, , drop = FALSE])
-    w1 <- samp_w[A == 1]
-    df0 <- data.frame(Y = Y[A == 0], X[A == 0, , drop = FALSE])
-    w0 <- samp_w[A == 0]
-    if ("(Intercept)" %in% names(df1)) {
-      df1[["(Intercept)"]] <- NULL
-      df0[["(Intercept)"]] <- NULL
-    }
-    f1 <- suppressWarnings(stats::glm(
-      Y ~ .,
-      data = df1,
-      family = fam,
-      weights = w1
-    ))
-    f0 <- suppressWarnings(stats::glm(
-      Y ~ .,
-      data = df0,
-      family = fam,
-      weights = w0
-    ))
-    type <- "response"
-    m1 <- as.numeric(stats::predict(f1, newdata = data.frame(X), type = type))
-    m0 <- as.numeric(stats::predict(f0, newdata = data.frame(X), type = type))
-    list(m1 = m1, m0 = m0, fit1 = f1, fit0 = f0)
-  }
-  stab_num <- function(A) {
-    pA <- mean(A)
-    A * pA + (1 - A) * (1 - pA)
-  }
-  ate_ipw <- function(Y, A, e, samp_w, stabilize = TRUE, trim = NULL) {
-    numer <- if (stabilize) stab_num(A) else 1
-    w_t <- samp_w * numer * A / e
-    w_c <- samp_w * numer * (1 - A) / (1 - e)
-    w_all <- w_t + w_c
-    if (!is.null(trim)) {
-      ql <- stats::quantile(w_all, trim[1])
-      qh <- stats::quantile(w_all, trim[2])
-      keep <- (w_all >= ql) & (w_all <= qh)
-      Y <- Y[keep]
-      w_t <- w_t[keep]
-      w_c <- w_c[keep]
-    }
-    mu1 <- sum(w_t * Y) / sum(w_t)
-    mu0 <- sum(w_c * Y) / sum(w_c)
-    list(tau = mu1 - mu0)
-  }
-  ate_aipw <- function(Y, A, e, m1, m0, samp_w, stabilize = TRUE, trim = NULL) {
-    base_w <- samp_w * (A / e + (1 - A) / (1 - e))
-    if (!is.null(trim)) {
-      ql <- stats::quantile(base_w, trim[1])
-      qh <- stats::quantile(base_w, trim[2])
-      keep <- (base_w >= ql) & (base_w <= qh)
-      Y <- Y[keep]
-      A <- A[keep]
-      e <- e[keep]
-      m1 <- m1[keep]
-      m0 <- m0[keep]
-      samp_w <- samp_w[keep]
-    }
-    numer <- if (stabilize) stab_num(A) else 1
-    pseudo <- m1 -
-      m0 +
-      numer * (A * (Y - m1) / e - (1 - A) * (Y - m0) / (1 - e))
-    W <- samp_w
-    Sw <- sum(W)
-    tau <- sum(W * pseudo) / Sw
-    IF <- (W / Sw) * (pseudo - tau) # weighted influence for mean
-    list(tau = tau, IF = IF)
-  }
-  one_effect <- function(df, family, est, samp_w) {
-    mf <- model.frame(formula, df)
-    Y <- mf[[y_name]]
-    A <- mf[[a_name]]
-    X <- model.matrix(form_X, df)
-    ps <- fit_ps(A, X, samp_w)
-    e <- ps$p
-    if (est == "ipw") {
-      ipw <- ate_ipw(
-        Y,
-        A,
-        e,
-        samp_w = samp_w,
-        stabilize = stabilize,
-        trim = trim
-      )
-      list(
-        ate = ipw$tau,
-        var = NA_real_,
-        IF = NULL,
-        details = list(ps_model = ps$fit, e = e, method = "ipw")
-      )
-    } else {
-      outs <- fit_outcome_models(Y, A, X, family, samp_w)
-      aipw <- ate_aipw(
-        Y,
-        A,
-        e,
-        outs$m1,
-        outs$m0,
-        samp_w = samp_w,
-        stabilize = stabilize,
-        trim = trim
-      )
-      v <- sum(aipw$IF^2) # var(Σ IF_i) since IF already scaled by W/Sw
-      list(
-        ate = aipw$tau,
-        var = v,
-        IF = aipw$IF,
-        details = list(
-          ps_model = ps$fit,
-          out1 = outs$fit1,
-          out0 = outs$fit0,
-          e = e,
-          m1 = outs$m1,
-          m0 = outs$m0,
-          method = "aipw"
-        )
-      )
-    }
-  }
-
+  # Set seed early if provided
   if (!is.null(seed)) {
     set.seed(as.integer(seed))
   }
 
-  # ---------------- Point estimates ----------------
-  est_r <- one_effect(data_rct, family_y, estimator, samp_w = w_rct)
-  est_o <- one_effect(data_obs, family_y, estimator, samp_w = w_obs)
-  diff_hat <- est_o$ate - est_r$ate
-
-  # ---------------- Bootstrap Δ (decision is fixed across reps) ----------------
-  if (B < 200L) {
-    warning("Low bootstrap reps; consider B >= 500 for stable CIs.")
-  }
-  boot_diffs <- numeric(B)
-  n_r <- nrow(data_rct)
-  n_o <- nrow(data_obs)
-  for (b in seq_len(B)) {
-    idx_r <- sample.int(n_r, n_r, replace = TRUE)
-    idx_o <- sample.int(n_o, n_o, replace = TRUE)
-    Xr_b <- X_r[idx_r, , drop = FALSE]
-    Xo_b <- X_o[idx_o, , drop = FALSE]
-    wr_b <- if (transport_applied == "rct_to_obs") {
-      density_ratio_weights(Xr_b, Xo_b)
-    } else {
-      rep(1, length(idx_r))
+  # Enhanced input validation
+  if (validate) {
+    validation_result <- validate_inputs(
+      data_rct,
+      data_obs,
+      formula,
+      estimator,
+      effect_measure,
+      family_y,
+      alpha,
+      trim
+    )
+    if (!validation_result$valid) {
+      stop("Input validation failed: ", validation_result$message)
     }
-    eb_r <- one_effect(
-      data_rct[idx_r, , drop = FALSE],
-      family_y,
-      estimator,
-      samp_w = wr_b
-    )$ate
-    eb_o <- one_effect(
-      data_obs[idx_o, , drop = FALSE],
-      family_y,
-      estimator,
-      samp_w = rep(1, length(idx_o))
-    )$ate
-    boot_diffs[b] <- eb_o - eb_r
+    # Display warnings
+    if (length(validation_result$warnings) > 0) {
+      for (w in validation_result$warnings) {
+        warning(w, call. = FALSE)
+      }
+    }
   }
-  ci <- stats::quantile(
-    boot_diffs,
-    probs = c(alpha / 2, 1 - alpha / 2),
-    names = FALSE
+
+  # Parse formula and prepare data
+  parsed_data <- parse_formula_and_data(formula, data_rct, data_obs)
+
+  # Auto shift detection and transport decision
+  transport_result <- decide_transport(
+    parsed_data$X_rct,
+    parsed_data$X_obs,
+    transport,
+    auto_method,
+    auto_alpha,
+    auto_energy_R
   )
 
-  # ---------------- Wald z (SE choice) ----------------
-  # If we applied transport weighting OR estimator==ipw -> bootstrap SE.
-  # Else (no transport, AIPW) -> IF-based SE.
-  if (transport_applied != "none" || estimator == "ipw") {
-    se_diff <- stats::sd(boot_diffs)
-  } else {
-    se_diff <- sqrt(est_r$var + est_o$var)
-  }
-  z <- as.numeric(diff_hat / se_diff)
-  p_wald <- 2 * (1 - stats::pnorm(abs(z)))
-
-  # ---------------- Diagnostics ----------------
-  diag_overlap <- function(A, e) {
-    rng <- range(e)
-    extreme <- mean(e < 0.01 | e > 0.99)
-    list(ps_min = rng[1], ps_max = rng[2], prop_extreme = extreme)
-  }
-  diag_r <- diag_overlap(
-    model.frame(formula, data_rct)[[a_name]],
-    est_r$details$e
-  )
-  diag_o <- diag_overlap(
-    model.frame(formula, data_obs)[[a_name]],
-    est_o$details$e
+  # Apply transport weights
+  weights <- compute_transport_weights(
+    parsed_data$X_rct,
+    parsed_data$X_obs,
+    transport_result$apply_transport
   )
 
-  diag_transport <- NULL
-  if (transport_applied == "rct_to_obs") {
-    ESS <- (sum(w_rct)^2) / sum(w_rct^2)
-    diag_transport <- list(
-      type = "rct_to_obs",
-      w_mean = mean(w_rct),
-      w_min = min(w_rct),
-      w_max = max(w_rct),
-      w_q = as.numeric(stats::quantile(w_rct, c(0.01, 0.5, 0.99))),
-      ESS = ESS
+  # Compute effects with chosen estimator
+  effects <- compute_effects(
+    parsed_data,
+    estimator,
+    effect_measure,
+    family_y,
+    weights$w_rct,
+    weights$w_obs,
+    stabilize,
+    trim
+  )
+
+  # Compute difference
+  diff_estimate <- compute_effect_difference(
+    effects$rct_effect,
+    effects$obs_effect,
+    effect_measure
+  )
+
+  # Inference
+  inference_result <- compute_inference(
+    parsed_data,
+    estimator,
+    effect_measure,
+    family_y,
+    weights,
+    effects,
+    diff_estimate,
+    inference_method,
+    B,
+    alpha,
+    parallel,
+    n_cores
+  )
+
+  # Comprehensive diagnostics
+  diagnostics <- compute_diagnostics(
+    parsed_data,
+    effects,
+    weights,
+    transport_result,
+    estimator,
+    family_y
+  )
+
+  # Sensitivity analysis
+  sensitivity <- compute_sensitivity_analysis(
+    effects,
+    diagnostics,
+    effect_measure
+  )
+
+  # Create result object
+  result <- create_result_object(
+    effects,
+    diff_estimate,
+    inference_result,
+    diagnostics,
+    sensitivity,
+    transport_result,
+    estimator,
+    effect_measure,
+    family_y,
+    inference_method,
+    match.call()
+  )
+
+  class(result) <- c("unconf_test", "list")
+  result
+}
+
+#' Input validation function
+#' @param data_rct RCT data
+#' @param data_obs Observational data
+#' @param formula Model formula
+#' @param estimator Chosen estimator
+#' @param effect_measure Effect measure
+#' @param family_y Outcome family
+#' @param alpha Alpha level
+#' @param trim Trimming bounds
+#' @return List with validation results
+validate_inputs <- function(
+  data_rct,
+  data_obs,
+  formula,
+  estimator,
+  effect_measure,
+  family_y,
+  alpha,
+  trim
+) {
+  warnings <- character(0)
+
+  # Basic data checks
+  if (!is.data.frame(data_rct) || !is.data.frame(data_obs)) {
+    return(list(
+      valid = FALSE,
+      message = "data_rct and data_obs must be data.frames"
+    ))
+  }
+
+  if (nrow(data_rct) < 50) {
+    warnings <- c(
+      warnings,
+      "Small RCT sample size (n < 50) may lead to unstable estimates"
     )
   }
 
-  out <- list(
-    estimator = estimator,
-    family_y = family_y,
-    transport = transport,
-    transport_applied = transport_applied, # "none" or "rct_to_obs"
-    rct_effect = est_r$ate,
-    obs_effect = est_o$ate,
-    diff_obs_minus_rct = diff_hat,
-    bootstrap_CI = c(lower = ci[1], upper = ci[2]),
-    wald = list(z = z, p_value = p_wald, se_diff = se_diff),
-    diagnostics = list(
-      rct_ps = diag_r,
-      obs_ps = diag_o,
-      transport = diag_transport,
-      auto = auto_diag,
-      n_rct = nrow(data_rct),
-      n_obs = nrow(data_obs),
-      trim = trim,
-      stabilize = stabilize
+  if (nrow(data_obs) < 100) {
+    warnings <- c(
+      warnings,
+      "Small observational sample size (n < 100) may lead to unstable estimates"
+    )
+  }
+
+  # Formula validation
+  tryCatch(
+    {
+      terms(formula)
+    },
+    error = function(e) {
+      return(list(valid = FALSE, message = "Invalid formula specification"))
+    }
+  )
+
+  # Check required variables
+  vars <- all.vars(formula)
+  if (length(vars) < 2) {
+    return(list(
+      valid = FALSE,
+      message = "Formula must include outcome and treatment"
+    ))
+  }
+
+  missing_rct <- setdiff(vars, names(data_rct))
+  missing_obs <- setdiff(vars, names(data_obs))
+
+  if (length(missing_rct) > 0) {
+    return(list(
+      valid = FALSE,
+      message = paste(
+        "Missing variables in RCT data:",
+        paste(missing_rct, collapse = ", ")
+      )
+    ))
+  }
+
+  if (length(missing_obs) > 0) {
+    return(list(
+      valid = FALSE,
+      message = paste(
+        "Missing variables in observational data:",
+        paste(missing_obs, collapse = ", ")
+      )
+    ))
+  }
+
+  # Check for missing values
+  rct_missing <- sum(is.na(data_rct[vars]))
+  obs_missing <- sum(is.na(data_obs[vars]))
+
+  if (rct_missing > 0) {
+    warnings <- c(
+      warnings,
+      paste("RCT data has", rct_missing, "missing values")
+    )
+  }
+
+  if (obs_missing > 0) {
+    warnings <- c(
+      warnings,
+      paste("Observational data has", obs_missing, "missing values")
+    )
+  }
+
+  # Parameter validation
+  if (alpha <= 0 || alpha >= 1) {
+    return(list(valid = FALSE, message = "alpha must be between 0 and 1"))
+  }
+
+  if (!is.null(trim)) {
+    if (
+      length(trim) != 2 || trim[1] >= trim[2] || any(trim < 0) || any(trim > 1)
+    ) {
+      return(list(
+        valid = FALSE,
+        message = "trim must be c(lower, upper) with 0 <= lower < upper <= 1"
+      ))
+    }
+  }
+
+  # Estimator-specific warnings
+  if (estimator == "tmle") {
+    if (!requireNamespace("tmle", quietly = TRUE)) {
+      return(list(
+        valid = FALSE,
+        message = "Package 'tmle' required for TMLE estimator"
+      ))
+    }
+  }
+
+  if (estimator == "matching") {
+    if (!requireNamespace("MatchIt", quietly = TRUE)) {
+      return(list(
+        valid = FALSE,
+        message = "Package 'MatchIt' required for matching estimator"
+      ))
+    }
+  }
+
+  # Effect measure compatibility
+  if (effect_measure %in% c("rr", "or") && family_y != "binomial") {
+    return(list(
+      valid = FALSE,
+      message = "Risk ratio and odds ratio only available for binary outcomes"
+    ))
+  }
+
+  list(valid = TRUE, warnings = warnings)
+}
+
+#' Parse formula and prepare data matrices
+#' @param formula Model formula
+#' @param data_rct RCT data
+#' @param data_obs Observational data
+#' @return List with parsed components
+parse_formula_and_data <- function(formula, data_rct, data_obs) {
+  # Parse formula components
+  tt <- terms(formula)
+  vars <- all.vars(formula)
+  y_name <- vars[1]
+  rhs_terms <- attr(tt, "term.labels")
+  a_name <- strsplit(rhs_terms[1], ":|\\*")[[1]][1]
+
+  # Create model frames
+  mf_rct <- model.frame(formula, data_rct)
+  mf_obs <- model.frame(formula, data_obs)
+
+  # Extract variables
+  Y_rct <- mf_rct[[y_name]]
+  A_rct <- mf_rct[[a_name]]
+  Y_obs <- mf_obs[[y_name]]
+  A_obs <- mf_obs[[a_name]]
+
+  # Coerce treatment to 0/1
+  A_rct <- coerce_binary(A_rct, "Treatment in RCT data")
+  A_obs <- coerce_binary(A_obs, "Treatment in observational data")
+
+  # Create covariate matrices
+  X_terms <- setdiff(rhs_terms, a_name)
+  if (length(X_terms) > 0) {
+    form_X <- reformulate(X_terms)
+    X_rct <- model.matrix(form_X, data = data_rct)
+    X_obs <- model.matrix(form_X, data = data_obs)
+  } else {
+    X_rct <- matrix(
+      1,
+      nrow = nrow(data_rct),
+      dimnames = list(NULL, "(Intercept)")
+    )
+    X_obs <- matrix(
+      1,
+      nrow = nrow(data_obs),
+      dimnames = list(NULL, "(Intercept)")
+    )
+  }
+
+  list(
+    Y_rct = Y_rct,
+    A_rct = A_rct,
+    X_rct = X_rct,
+    Y_obs = Y_obs,
+    A_obs = A_obs,
+    X_obs = X_obs,
+    y_name = y_name,
+    a_name = a_name,
+    data_rct = data_rct,
+    data_obs = data_obs,
+    formula = formula
+  )
+}
+
+#' Coerce variable to binary 0/1
+#' @param x Variable to coerce
+#' @param var_name Variable name for error messages
+#' @return Binary 0/1 vector
+coerce_binary <- function(x, var_name = "Variable") {
+  if (is.logical(x)) {
+    return(as.integer(x))
+  }
+
+  if (is.factor(x)) {
+    x <- droplevels(x)
+    if (nlevels(x) != 2) {
+      stop(paste(var_name, "must have exactly 2 levels"))
+    }
+    return(as.integer(x) - 1L)
+  }
+
+  if (is.character(x)) {
+    unique_vals <- unique(x)
+    if (length(unique_vals) != 2) {
+      stop(paste(var_name, "must have exactly 2 unique values"))
+    }
+    return(as.integer(x == sort(unique_vals)[2]))
+  }
+
+  if (is.numeric(x)) {
+    unique_vals <- sort(unique(x))
+    if (length(unique_vals) != 2) {
+      stop(paste(var_name, "must have exactly 2 unique values"))
+    }
+    if (all(unique_vals == c(0, 1))) {
+      return(as.integer(x))
+    } else {
+      return(as.integer(x == unique_vals[2]))
+    }
+  }
+
+  stop(paste(
+    var_name,
+    "must be logical, factor, character, or numeric with 2 levels"
+  ))
+}
+
+#' Decide whether to apply transport weighting
+#' @param X_rct RCT covariate matrix
+#' @param X_obs Observational covariate matrix
+#' @param transport Transport method
+#' @param auto_method Method for auto detection
+#' @param auto_alpha Alpha for shift tests
+#' @param auto_energy_R Permutations for energy test
+#' @return List with transport decision and diagnostics
+decide_transport <- function(
+  X_rct,
+  X_obs,
+  transport,
+  auto_method,
+  auto_alpha,
+  auto_energy_R
+) {
+  if (transport == "none") {
+    return(list(
+      apply_transport = FALSE,
+      method = "none",
+      auto_diagnostics = NULL
+    ))
+  }
+
+  if (transport == "rct_to_obs") {
+    return(list(
+      apply_transport = TRUE,
+      method = "rct_to_obs",
+      auto_diagnostics = NULL
+    ))
+  }
+
+  # Auto detection
+  auto_diag <- detect_covariate_shift(
+    X_rct,
+    X_obs,
+    auto_method,
+    auto_alpha,
+    auto_energy_R
+  )
+
+  list(
+    apply_transport = auto_diag$shift_detected,
+    method = if (auto_diag$shift_detected) "rct_to_obs" else "none",
+    auto_diagnostics = auto_diag
+  )
+}
+
+#' Detect covariate shift between datasets
+#' @param X_rct RCT covariate matrix
+#' @param X_obs Observational covariate matrix
+#' @param method Detection method
+#' @param alpha Significance level
+#' @param energy_R Permutations for energy test
+#' @return List with shift detection results
+detect_covariate_shift <- function(X_rct, X_obs, method, alpha, energy_R) {
+  results <- list()
+  detected <- FALSE
+
+  # Remove intercept for tests
+  X_rct_test <- X_rct[, !colnames(X_rct) %in% "(Intercept)", drop = FALSE]
+  X_obs_test <- X_obs[, !colnames(X_obs) %in% "(Intercept)", drop = FALSE]
+
+  # KS test
+  if (method %in% c("both", "ks") && ncol(X_rct_test) > 0) {
+    ks_result <- perform_ks_tests(X_rct_test, X_obs_test, alpha)
+    results$ks <- ks_result
+    if (ks_result$any_significant) detected <- TRUE
+  }
+
+  # Energy test
+  if (method %in% c("both", "energy")) {
+    energy_result <- perform_energy_test(
+      X_rct_test,
+      X_obs_test,
+      alpha,
+      energy_R
+    )
+    results$energy <- energy_result
+    if (energy_result$available && energy_result$significant) detected <- TRUE
+  }
+
+  # Combined standardized mean differences
+  smd_result <- compute_standardized_mean_differences(X_rct_test, X_obs_test)
+  results$smd <- smd_result
+
+  list(
+    shift_detected = detected,
+    method = method,
+    alpha = alpha,
+    tests = results
+  )
+}
+
+#' Perform KS tests for each covariate
+#' @param X_rct RCT covariates
+#' @param X_obs Observational covariates
+#' @param alpha Significance level
+#' @return KS test results
+perform_ks_tests <- function(X_rct, X_obs, alpha) {
+  if (ncol(X_rct) == 0) {
+    return(list(
+      available = TRUE,
+      p_values = numeric(0),
+      p_adj = numeric(0),
+      any_significant = FALSE,
+      significant_vars = character(0)
+    ))
+  }
+
+  var_names <- colnames(X_rct)
+  p_values <- numeric(length(var_names))
+  names(p_values) <- var_names
+
+  for (i in seq_along(var_names)) {
+    var_name <- var_names[i]
+    x_rct <- X_rct[, var_name]
+    x_obs <- X_obs[, var_name]
+
+    # Handle discrete variables
+    if (length(unique(c(x_rct, x_obs))) <= 10) {
+      # Chi-square test for discrete variables
+      tab_rct <- table(x_rct)
+      tab_obs <- table(x_obs)
+      all_levels <- sort(unique(c(names(tab_rct), names(tab_obs))))
+
+      counts_rct <- rep(0, length(all_levels))
+      counts_obs <- rep(0, length(all_levels))
+      names(counts_rct) <- names(counts_obs) <- all_levels
+
+      counts_rct[names(tab_rct)] <- tab_rct
+      counts_obs[names(tab_obs)] <- tab_obs
+
+      test_result <- chisq.test(rbind(counts_rct, counts_obs))
+      p_values[i] <- test_result$p.value
+    } else {
+      # KS test for continuous variables
+      test_result <- ks.test(x_rct, x_obs)
+      p_values[i] <- test_result$p.value
+    }
+  }
+
+  # Multiple testing correction
+  p_adj <- p.adjust(p_values, method = "BH")
+  significant <- p_adj < alpha
+
+  list(
+    available = TRUE,
+    p_values = p_values,
+    p_adj = p_adj,
+    any_significant = any(significant),
+    significant_vars = names(p_adj)[significant]
+  )
+}
+
+#' Perform energy test for multivariate shift
+#' @param X_rct RCT covariates
+#' @param X_obs Observational covariates
+#' @param alpha Significance level
+#' @param R Number of permutations
+#' @return Energy test results
+perform_energy_test <- function(X_rct, X_obs, alpha, R) {
+  if (!requireNamespace("energy", quietly = TRUE)) {
+    return(list(
+      available = FALSE,
+      p_value = NA_real_,
+      significant = FALSE,
+      R = R
+    ))
+  }
+
+  if (ncol(X_rct) == 0) {
+    return(list(
+      available = TRUE,
+      p_value = 1.0,
+      significant = FALSE,
+      R = R
+    ))
+  }
+
+  # Combine data
+  Z <- rbind(X_rct, X_obs)
+  sizes <- c(nrow(X_rct), nrow(X_obs))
+
+  # Perform test
+  test_result <- energy::eqdist.etest(Z, sizes = sizes, R = as.integer(R))
+
+  list(
+    available = TRUE,
+    p_value = test_result$p.value,
+    significant = test_result$p.value < alpha,
+    R = R,
+    statistic = test_result$statistic
+  )
+}
+
+#' Compute standardized mean differences
+#' @param X_rct RCT covariates
+#' @param X_obs Observational covariates
+#' @return SMD results
+compute_standardized_mean_differences <- function(X_rct, X_obs) {
+  if (ncol(X_rct) == 0) {
+    return(list(
+      smd = numeric(0),
+      max_smd = 0
+    ))
+  }
+
+  var_names <- colnames(X_rct)
+  smd <- numeric(length(var_names))
+  names(smd) <- var_names
+
+  for (i in seq_along(var_names)) {
+    var_name <- var_names[i]
+    x_rct <- X_rct[, var_name]
+    x_obs <- X_obs[, var_name]
+
+    mean_diff <- mean(x_obs) - mean(x_rct)
+    pooled_sd <- sqrt((var(x_rct) + var(x_obs)) / 2)
+
+    smd[i] <- if (pooled_sd > 0) mean_diff / pooled_sd else 0
+  }
+
+  list(
+    smd = smd,
+    max_smd = max(abs(smd))
+  )
+}
+
+#' Compute transport weights
+#' @param X_rct RCT covariate matrix
+#' @param X_obs Observational covariate matrix
+#' @param apply_transport Whether to apply transport weighting
+#' @return List with weights
+compute_transport_weights <- function(X_rct, X_obs, apply_transport) {
+  n_rct <- nrow(X_rct)
+  n_obs <- nrow(X_obs)
+
+  if (!apply_transport) {
+    return(list(
+      w_rct = rep(1, n_rct),
+      w_obs = rep(1, n_obs),
+      transport_applied = FALSE,
+      diagnostics = NULL
+    ))
+  }
+
+  # Fit density ratio model
+  Z <- rbind(X_rct, X_obs)
+  indicator <- c(rep(0, n_rct), rep(1, n_obs)) # 0 = RCT, 1 = OBS
+
+  # Remove intercept from predictors if present
+  if ("(Intercept)" %in% colnames(Z)) {
+    Z <- Z[, !colnames(Z) %in% "(Intercept)", drop = FALSE]
+  }
+
+  # Fit logistic regression
+  if (ncol(Z) == 0) {
+    # No covariates - equal weights
+    w_rct <- rep(1, n_rct)
+  } else {
+    df_fit <- data.frame(S = indicator, Z)
+    fit <- glm(S ~ ., data = df_fit, family = binomial())
+
+    # Predict probability of being in observational study
+    newdata_rct <- data.frame(Z[1:n_rct, , drop = FALSE])
+    names(newdata_rct) <- names(df_fit)[-1]
+
+    p_obs_given_rct <- predict(fit, newdata = newdata_rct, type = "response")
+    p_obs_given_rct <- pmax(pmin(p_obs_given_rct, 0.999), 0.001) # Stabilize
+
+    # Compute weights: P(S=1|X) / P(S=0|X)
+    w_rct <- p_obs_given_rct / (1 - p_obs_given_rct)
+    w_rct <- w_rct / mean(w_rct) # Normalize
+  }
+
+  w_obs <- rep(1, n_obs)
+
+  # Compute diagnostics
+  diagnostics <- list(
+    weight_range = range(w_rct),
+    weight_quantiles = quantile(
+      w_rct,
+      c(0.01, 0.05, 0.25, 0.5, 0.75, 0.95, 0.99)
     ),
-    call = match.call()
+    effective_sample_size = sum(w_rct)^2 / sum(w_rct^2),
+    coefficient_of_variation = sd(w_rct) / mean(w_rct)
   )
 
-  out$summary <- data.frame(
-    Estimator = estimator,
-    Transport_Requested = transport,
-    Transport_Applied = transport_applied,
-    Effect_RCT = est_r$ate,
-    Effect_OBS = est_o$ate,
-    Diff_OBS_minus_RCT = diff_hat,
-    CI_lower = ci[1],
-    CI_upper = ci[2],
-    Wald_z = z,
-    Wald_p = p_wald,
-    n_RCT = nrow(data_rct),
-    n_OBS = nrow(data_obs),
-    row.names = NULL
+  list(
+    w_rct = w_rct,
+    w_obs = w_obs,
+    transport_applied = TRUE,
+    diagnostics = diagnostics
+  )
+}
+
+#' Compute effects using specified estimator
+#' @param parsed_data Parsed data object
+#' @param estimator Estimation method
+#' @param effect_measure Effect measure
+#' @param family_y Outcome family
+#' @param w_rct RCT weights
+#' @param w_obs Observational weights
+#' @param stabilize Stabilize weights
+#' @param trim Trimming bounds
+#' @return Effects object
+compute_effects <- function(
+  parsed_data,
+  estimator,
+  effect_measure,
+  family_y,
+  w_rct,
+  w_obs,
+  stabilize,
+  trim
+) {
+  # Compute RCT effect
+  rct_effect <- estimate_single_effect(
+    Y = parsed_data$Y_rct,
+    A = parsed_data$A_rct,
+    X = parsed_data$X_rct,
+    weights = w_rct,
+    estimator = estimator,
+    effect_measure = effect_measure,
+    family_y = family_y,
+    stabilize = stabilize,
+    trim = trim
   )
 
-  class(out) <- c("unconf_test", "list")
-  out
+  # Compute observational effect
+  obs_effect <- estimate_single_effect(
+    Y = parsed_data$Y_obs,
+    A = parsed_data$A_obs,
+    X = parsed_data$X_obs,
+    weights = w_obs,
+    estimator = estimator,
+    effect_measure = effect_measure,
+    family_y = family_y,
+    stabilize = stabilize,
+    trim = trim
+  )
+
+  list(
+    rct_effect = rct_effect,
+    obs_effect = obs_effect
+  )
 }
 
-#' Print method for unconf_test objects
-#'
-#' @param x An object of class `unconf_test`.
-#' @param ... Passed to methods (unused).
-#' @return Invisibly returns `x`.
-#' @export
-print.unconf_test <- function(x, ...) {
-  cat("# Unconfoundedness test (RCT vs OBS)\n")
-  cat(sprintf(
-    "- Estimator: %s; Outcome family: %s; Transport requested: %s; Applied: %s\n",
-    x$estimator,
-    x$family_y,
-    x$transport,
-    x$transport_applied
-  ))
-  cat(sprintf(
-    "- ω̂_RCT = %.6f; ω̂_OBS = %.6f; Δ = %.6f\n",
-    x$rct_effect,
-    x$obs_effect,
-    x$diff_obs_minus_rct
-  ))
-  cat(sprintf(
-    "- Bootstrap CI for Δ: [%.6f, %.6f]\n",
-    x$bootstrap_CI[1],
-    x$bootstrap_CI[2]
-  ))
-  cat(sprintf(
-    "- Wald test: z = %.3f, p = %.4g (H0: Δ = 0)\n",
-    x$wald$z,
-    x$wald$p_value
-  ))
-  cat("- Positivity diagnostics (PS in [min,max], extreme PS <1% or >99%):\n")
-  cat(sprintf(
-    "  RCT: [%.3f, %.3f], extreme=%.2f%%;  OBS: [%.3f, %.3f], extreme=%.2f%%\n",
-    x$diagnostics$rct_ps$ps_min,
-    x$diagnostics$rct_ps$ps_max,
-    100 * x$diagnostics$rct_ps$prop_extreme,
-    x$diagnostics$obs_ps$ps_min,
-    x$diagnostics$obs_ps$ps_max,
-    100 * x$diagnostics$obs_ps$prop_extreme
-  ))
-  if (!is.null(x$diagnostics$transport)) {
-    tr <- x$diagnostics$transport
-    cat("- Transport (RCT->OBS) weights summary:\n")
-    cat(sprintf(
-      "  mean=%.3f, min=%.3f, q01=%.3f, median=%.3f, q99=%.3f, max=%.3f, ESS=%.1f\n",
-      tr$w_mean,
-      tr$w_min,
-      tr$w_q[1],
-      tr$w_q[2],
-      tr$w_q[3],
-      tr$w_max,
-      tr$ESS
-    ))
-  }
-  if (!is.null(x$diagnostics$auto)) {
-    ad <- x$diagnostics$auto
-    cat(sprintf(
-      "- Auto shift detection: detected=%s, method=%s, alpha=%.3f\n",
-      ad$detected,
-      ad$requested_method,
-      ad$alpha
-    ))
-    if (!is.null(ad$ks)) {
-      ks <- ad$ks
-      if (ks$available && length(ks$padj)) {
-        bad <- if (length(ks$rejected_cols)) {
-          paste(ks$rejected_cols, collapse = ", ")
-        } else {
-          "none"
-        }
-        cat(sprintf(
-          "  KS: any_reject=%s; rejected_cols=%s\n",
-          ks$reject_any,
-          bad
-        ))
-      } else {
-        cat("  KS: not run or no covariates beyond intercept.\n")
-      }
-    }
-    if (!is.null(ad$energy)) {
-      en <- ad$energy
-      if (en$available) {
-        cat(sprintf("  Energy: p=%.4g (R=%d)\n", en$p_value, en$R))
-      } else {
-        cat("  Energy: package 'energy' not available; skipped.\n")
-      }
-    }
-  }
-  invisible(x)
+#' Estimate effect for single dataset
+#' @param Y Outcome vector
+#' @param A Treatment vector
+#' @param X Covariate matrix
+#' @param weights Sample weights
+#' @param estimator Estimation method
+#' @param effect_measure Effect measure
+#' @param family_y Outcome family
+#' @param stabilize Stabilize weights
+#' @param trim Trimming bounds
+#' @return Single effect estimate
+estimate_single_effect <- function(
+  Y,
+  A,
+  X,
+  weights,
+  estimator,
+  effect_measure,
+  family_y,
+  stabilize,
+  trim
+) {
+  switch(
+    estimator,
+    "ipw" = estimate_ipw(
+      Y,
+      A,
+      X,
+      weights,
+      effect_measure,
+      family_y,
+      stabilize,
+      trim
+    ),
+    "aipw" = estimate_aipw(
+      Y,
+      A,
+      X,
+      weights,
+      effect_measure,
+      family_y,
+      stabilize,
+      trim
+    ),
+    "tmle" = estimate_tmle(Y, A, X, weights, effect_measure, family_y),
+    "gcomp" = estimate_gcomp(Y, A, X, weights, effect_measure, family_y),
+    "matching" = estimate_matching(Y, A, X, weights, effect_measure, family_y),
+    stop("Unknown estimator: ", estimator)
+  )
 }
 
-# Not exported; small helper for print safety
-`%||%` <- function(a, b) {
-  if (is.null(a)) b else a
+# estimators.R - Complete estimator implementations
+
+#' IPW Estimator
+#' @param Y Outcome vector
+#' @param A Treatment vector
+#' @param X Covariate matrix
+#' @param weights Sample weights
+#' @param effect_measure Effect measure
+#' @param family_y Outcome family
+#' @param stabilize Stabilize weights
+#' @param trim Trimming bounds
+#' @return IPW estimate
+estimate_ipw <- function(
+  Y,
+  A,
+  X,
+  weights,
+  effect_measure,
+  family_y,
+  stabilize,
+  trim
+) {
+  # Fit propensity score model
+  ps_fit <- fit_propensity_model(A, X, weights)
+  e <- ps_fit$fitted_values
+
+  # Compute IPW weights
+  ipw_weights <- compute_ipw_weights(A, e, weights, stabilize)
+
+  # Apply trimming if specified
+  if (!is.null(trim)) {
+    keep_idx <- apply_weight_trimming(ipw_weights, trim)
+    Y <- Y[keep_idx]
+    A <- A[keep_idx]
+    ipw_weights <- ipw_weights[keep_idx]
+    e <- e[keep_idx]
+  }
+
+  # Estimate potential outcomes
+  mu1 <- weighted.mean(Y[A == 1], ipw_weights[A == 1])
+  mu0 <- weighted.mean(Y[A == 0], ipw_weights[A == 0])
+
+  # Compute effect measure
+  effect <- compute_effect_measure(mu1, mu0, effect_measure)
+
+  # Compute influence function for variance
+  IF <- compute_ipw_influence_function(
+    Y,
+    A,
+    e,
+    ipw_weights,
+    mu1,
+    mu0,
+    effect_measure
+  )
+
+  list(
+    estimate = effect,
+    mu1 = mu1,
+    mu0 = mu0,
+    variance = var(IF, na.rm = TRUE),
+    influence_function = IF,
+    propensity_scores = e,
+    weights = ipw_weights,
+    details = list(
+      ps_model = ps_fit,
+      method = "ipw"
+    )
+  )
+}
+
+#' AIPW (Doubly Robust) Estimator
+#' @param Y Outcome vector
+#' @param A Treatment vector
+#' @param X Covariate matrix
+#' @param weights Sample weights
+#' @param effect_measure Effect measure
+#' @param family_y Outcome family
+#' @param stabilize Stabilize weights
+#' @param trim Trimming bounds
+#' @return AIPW estimate
+estimate_aipw <- function(
+  Y,
+  A,
+  X,
+  weights,
+  effect_measure,
+  family_y,
+  stabilize,
+  trim
+) {
+  # Fit propensity score model
+  ps_fit <- fit_propensity_model(A, X, weights)
+  e <- ps_fit$fitted_values
+
+  # Fit outcome regression models
+  outcome_fits <- fit_outcome_models(Y, A, X, weights, family_y)
+  mu1_hat <- outcome_fits$mu1_pred
+  mu0_hat <- outcome_fits$mu0_pred
+
+  # Compute AIPW pseudo-outcomes
+  pseudo_outcomes <- compute_aipw_pseudo_outcomes(
+    Y,
+    A,
+    e,
+    mu1_hat,
+    mu0_hat,
+    weights,
+    stabilize
+  )
+
+  # Apply trimming if specified
+  if (!is.null(trim)) {
+    base_weights <- weights * (A / e + (1 - A) / (1 - e))
+    keep_idx <- apply_weight_trimming(base_weights, trim)
+    Y <- Y[keep_idx]
+    A <- A[keep_idx]
+    e <- e[keep_idx]
+    mu1_hat <- mu1_hat[keep_idx]
+    mu0_hat <- mu0_hat[keep_idx]
+    weights <- weights[keep_idx]
+    pseudo_outcomes <- compute_aipw_pseudo_outcomes(
+      Y,
+      A,
+      e,
+      mu1_hat,
+      mu0_hat,
+      weights,
+      stabilize
+    )
+  }
+
+  # Estimate potential outcomes
+  mu1 <- weighted.mean(pseudo_outcomes$mu1, weights)
+  mu0 <- weighted.mean(pseudo_outcomes$mu0, weights)
+
+  # Compute effect measure
+  effect <- compute_effect_measure(mu1, mu0, effect_measure)
+
+  # Compute influence function
+  IF <- compute_aipw_influence_function(
+    pseudo_outcomes,
+    weights,
+    mu1,
+    mu0,
+    effect_measure
+  )
+
+  list(
+    estimate = effect,
+    mu1 = mu1,
+    mu0 = mu0,
+    variance = var(IF, na.rm = TRUE),
+    influence_function = IF,
+    propensity_scores = e,
+    outcome_predictions = list(mu1 = mu1_hat, mu0 = mu0_hat),
+    details = list(
+      ps_model = ps_fit,
+      outcome_models = outcome_fits,
+      method = "aipw"
+    )
+  )
+}
+
+#' TMLE Estimator
+#' @param Y Outcome vector
+#' @param A Treatment vector
+#' @param X Covariate matrix
+#' @param weights Sample weights
+#' @param effect_measure Effect measure
+#' @param family_y Outcome family
+#' @return TMLE estimate
+estimate_tmle <- function(Y, A, X, weights, effect_measure, family_y) {
+  if (!requireNamespace("tmle", quietly = TRUE)) {
+    stop("Package 'tmle' required for TMLE estimator")
+  }
+
+  # Convert matrix to data frame for tmle
+  if (ncol(X) > 1 || !all(X[, 1] == 1)) {
+    W <- X[, !colnames(X) %in% "(Intercept)", drop = FALSE]
+    if (ncol(W) == 0) W <- NULL
+  } else {
+    W <- NULL
+  }
+
+  # Fit TMLE
+  tmle_fit <- tryCatch(
+    {
+      tmle::tmle(
+        Y = Y,
+        A = A,
+        W = W,
+        family = if (family_y == "binomial") "binomial" else "gaussian",
+        V = 5 # 5-fold cross-validation
+      )
+    },
+    error = function(e) {
+      # Fallback to simpler TMLE if cross-validation fails
+      tmle::tmle(
+        Y = Y,
+        A = A,
+        W = W,
+        family = if (family_y == "binomial") "binomial" else "gaussian"
+      )
+    }
+  )
+
+  # Extract estimates
+  mu1 <- tmle_fit$estimates$EY1$psi
+  mu0 <- tmle_fit$estimates$EY0$psi
+  effect_rd <- tmle_fit$estimates$ATE$psi
+
+  # Convert to requested effect measure
+  if (effect_measure == "rd") {
+    effect <- effect_rd
+  } else if (effect_measure == "rr") {
+    effect <- if (mu0 != 0) mu1 / mu0 else NA_real_
+  } else if (effect_measure == "or") {
+    if (mu0 != 0 && mu0 != 1 && mu1 != 0 && mu1 != 1) {
+      effect <- (mu1 / (1 - mu1)) / (mu0 / (1 - mu0))
+    } else {
+      effect <- NA_real_
+    }
+  }
+
+  # Variance (for risk difference)
+  variance <- tmle_fit$estimates$ATE$var.psi
+
+  # Adjust variance for other measures using delta method
+  if (effect_measure == "rr" && mu0 != 0 && !is.na(effect)) {
+    # Delta method for log risk ratio
+    grad <- c(1 / mu0, -mu1 / (mu0^2))
+    var_mu <- matrix(
+      c(tmle_fit$estimates$EY1$var.psi, 0, 0, tmle_fit$estimates$EY0$var.psi),
+      2,
+      2
+    )
+    variance <- as.numeric(t(grad) %*% var_mu %*% grad * (effect^2))
+  } else if (effect_measure == "or" && !is.na(effect)) {
+    # Delta method for log odds ratio (approximate)
+    if (mu1 != 0 && mu1 != 1 && mu0 != 0 && mu0 != 1) {
+      variance <- tmle_fit$estimates$ATE$var.psi *
+        (effect^2) /
+        ((mu1 * (1 - mu1) + mu0 * (1 - mu0))^2)
+    }
+  }
+
+  list(
+    estimate = effect,
+    mu1 = mu1,
+    mu0 = mu0,
+    variance = variance,
+    influence_function = tmle_fit$estimates$ATE$IC,
+    details = list(
+      tmle_fit = tmle_fit,
+      method = "tmle"
+    )
+  )
+}
+
+#' G-computation Estimator
+#' @param Y Outcome vector
+#' @param A Treatment vector
+#' @param X Covariate matrix
+#' @param weights Sample weights
+#' @param effect_measure Effect measure
+#' @param family_y Outcome family
+#' @return G-computation estimate
+estimate_gcomp <- function(Y, A, X, weights, effect_measure, family_y) {
+  # Fit outcome models
+  outcome_fits <- fit_outcome_models(Y, A, X, weights, family_y)
+
+  # Predict potential outcomes for all subjects
+  mu1_hat <- outcome_fits$mu1_pred
+  mu0_hat <- outcome_fits$mu0_pred
+
+  # G-computation estimates
+  mu1 <- weighted.mean(mu1_hat, weights)
+  mu0 <- weighted.mean(mu0_hat, weights)
+
+  # Compute effect measure
+  effect <- compute_effect_measure(mu1, mu0, effect_measure)
+
+  # Bootstrap-based variance estimation
+  n <- length(Y)
+  W_scaled <- weights / sum(weights)
+
+  # Influence function approximation for G-computation
+  IF <- W_scaled * (mu1_hat - mu0_hat - effect)
+  variance <- var(IF, na.rm = TRUE)
+
+  list(
+    estimate = effect,
+    mu1 = mu1,
+    mu0 = mu0,
+    variance = variance,
+    influence_function = IF,
+    outcome_predictions = list(mu1 = mu1_hat, mu0 = mu0_hat),
+    details = list(
+      outcome_models = outcome_fits,
+      method = "gcomp"
+    )
+  )
+}
+
+#' Matching Estimator
+#' @param Y Outcome vector
+#' @param A Treatment vector
+#' @param X Covariate matrix
+#' @param weights Sample weights
+#' @param effect_measure Effect measure
+#' @param family_y Outcome family
+#' @return Matching estimate
+estimate_matching <- function(Y, A, X, weights, effect_measure, family_y) {
+  if (!requireNamespace("MatchIt", quietly = TRUE)) {
+    stop("Package 'MatchIt' required for matching estimator")
+  }
+
+  # Prepare data
+  W <- X[, !colnames(X) %in% "(Intercept)", drop = FALSE]
+  if (ncol(W) == 0) {
+    stop("Matching requires covariates")
+  }
+
+  data_match <- data.frame(Y = Y, A = A, W, weights = weights)
+
+  # Perform matching
+  match_fit <- tryCatch(
+    {
+      MatchIt::matchit(
+        A ~ .,
+        data = data_match[, !names(data_match) %in% c("Y", "weights")],
+        method = "nearest",
+        distance = "glm",
+        replace = FALSE,
+        ratio = 1
+      )
+    },
+    error = function(e) {
+      # Fallback to exact matching if available
+      if (ncol(W) <= 3) {
+        MatchIt::matchit(
+          A ~ .,
+          data = data_match[, !names(data_match) %in% c("Y", "weights")],
+          method = "exact"
+        )
+      } else {
+        stop("Matching failed: ", e$message)
+      }
+    }
+  )
+
+  # Extract matched data
+  matched_data <- MatchIt::match.data(match_fit)
+
+  # Compute effect on matched sample
+  Y_matched <- matched_data$Y
+  A_matched <- matched_data$A
+  match_weights <- matched_data$weights
+
+  # Simple difference in means on matched sample
+  mu1 <- weighted.mean(Y_matched[A_matched == 1], match_weights[A_matched == 1])
+  mu0 <- weighted.mean(Y_matched[A_matched == 0], match_weights[A_matched == 0])
+
+  # Compute effect measure
+  effect <- compute_effect_measure(mu1, mu0, effect_measure)
+
+  # Approximate variance using matched sample
+  n1 <- sum(A_matched == 1)
+  n0 <- sum(A_matched == 0)
+
+  if (n1 > 1 && n0 > 1) {
+    s1_sq <- wtd.var(Y_matched[A_matched == 1], match_weights[A_matched == 1])
+    s0_sq <- wtd.var(Y_matched[A_matched == 0], match_weights[A_matched == 0])
+
+    if (effect_measure == "rd") {
+      variance <- s1_sq / n1 + s0_sq / n0
+    } else {
+      # Delta method approximation for other measures
+      if (effect_measure == "rr" && mu0 != 0) {
+        variance <- (s1_sq / n1) / (mu0^2) + (s0_sq / n0) * (mu1^2) / (mu0^4)
+      } else if (
+        effect_measure == "or" && mu0 != 0 && mu0 != 1 && mu1 != 0 && mu1 != 1
+      ) {
+        variance <- (s1_sq / n1) /
+          (mu1^2 * (1 - mu1)^2) +
+          (s0_sq / n0) / (mu0^2 * (1 - mu0)^2)
+      } else {
+        variance <- NA_real_
+      }
+    }
+  } else {
+    variance <- NA_real_
+  }
+
+  list(
+    estimate = effect,
+    mu1 = mu1,
+    mu0 = mu0,
+    variance = variance,
+    influence_function = NULL, # Not easily available for matching
+    details = list(
+      match_fit = match_fit,
+      matched_data = matched_data,
+      n_matched = nrow(matched_data),
+      method = "matching"
+    )
+  )
+}
+
+# Helper functions for estimators
+
+#' Fit propensity score model
+#' @param A Treatment vector
+#' @param X Covariate matrix
+#' @param weights Sample weights
+#' @return Propensity score fit
+fit_propensity_model <- function(A, X, weights) {
+  # Prepare data
+  if (ncol(X) > 1 || !all(X[, 1] == 1)) {
+    predictors <- X[, !colnames(X) %in% "(Intercept)", drop = FALSE]
+    if (ncol(predictors) == 0) {
+      df <- data.frame(A = A)
+      formula <- A ~ 1
+    } else {
+      df <- data.frame(A = A, predictors)
+      formula <- as.formula(paste(
+        "A ~",
+        paste(names(predictors), collapse = " + ")
+      ))
+    }
+  } else {
+    df <- data.frame(A = A)
+    formula <- A ~ 1
+  }
+
+  # Fit model
+  fit <- tryCatch(
+    {
+      glm(formula, data = df, family = binomial(), weights = weights)
+    },
+    error = function(e) {
+      # Fallback for perfect separation or other issues
+      warning(
+        "Propensity score model fitting failed, using marginal probability"
+      )
+      list(fitted.values = rep(mean(A), length(A)))
+    }
+  )
+
+  # Extract fitted values
+  if (inherits(fit, "glm")) {
+    fitted_values <- pmax(pmin(fitted(fit), 0.999), 0.001) # Stabilize
+  } else {
+    fitted_values <- fit$fitted.values
+  }
+
+  list(
+    model = fit,
+    fitted_values = fitted_values,
+    formula = formula
+  )
+}
+
+#' Fit outcome regression models
+#' @param Y Outcome vector
+#' @param A Treatment vector
+#' @param X Covariate matrix
+#' @param weights Sample weights
+#' @param family_y Outcome family
+#' @return Outcome model fits
+fit_outcome_models <- function(Y, A, X, weights, family_y) {
+  # Prepare predictors
+  if (ncol(X) > 1 || !all(X[, 1] == 1)) {
+    predictors <- X[, !colnames(X) %in% "(Intercept)", drop = FALSE]
+    if (ncol(predictors) == 0) {
+      use_predictors <- FALSE
+    } else {
+      use_predictors <- TRUE
+    }
+  } else {
+    use_predictors <- FALSE
+  }
+
+  # Fit model for treated (A=1)
+  idx_1 <- A == 1
+  if (sum(idx_1) < 2) {
+    stop("Insufficient treated observations for outcome modeling")
+  }
+
+  if (use_predictors) {
+    df_1 <- data.frame(Y = Y[idx_1], predictors[idx_1, , drop = FALSE])
+    formula_1 <- as.formula(paste(
+      "Y ~",
+      paste(colnames(predictors), collapse = " + ")
+    ))
+  } else {
+    df_1 <- data.frame(Y = Y[idx_1])
+    formula_1 <- Y ~ 1
+  }
+
+  family_obj <- if (family_y == "binomial") binomial() else gaussian()
+
+  fit_1 <- tryCatch(
+    {
+      glm(formula_1, data = df_1, family = family_obj, weights = weights[idx_1])
+    },
+    error = function(e) {
+      # Fallback to intercept-only model
+      glm(
+        Y ~ 1,
+        data = data.frame(Y = Y[idx_1]),
+        family = family_obj,
+        weights = weights[idx_1]
+      )
+    }
+  )
+
+  # Fit model for control (A=0)
+  idx_0 <- A == 0
+  if (sum(idx_0) < 2) {
+    stop("Insufficient control observations for outcome modeling")
+  }
+
+  if (use_predictors) {
+    df_0 <- data.frame(Y = Y[idx_0], predictors[idx_0, , drop = FALSE])
+    formula_0 <- as.formula(paste(
+      "Y ~",
+      paste(colnames(predictors), collapse = " + ")
+    ))
+  } else {
+    df_0 <- data.frame(Y = Y[idx_0])
+    formula_0 <- Y ~ 1
+  }
+
+  fit_0 <- tryCatch(
+    {
+      glm(formula_0, data = df_0, family = family_obj, weights = weights[idx_0])
+    },
+    error = function(e) {
+      # Fallback to intercept-only model
+      glm(
+        Y ~ 1,
+        data = data.frame(Y = Y[idx_0]),
+        family = family_obj,
+        weights = weights[idx_0]
+      )
+    }
+  )
+
+  # Predict for all observations
+  if (use_predictors && inherits(fit_1, "glm") && inherits(fit_0, "glm")) {
+    newdata <- data.frame(predictors)
+    names(newdata) <- colnames(predictors)
+  } else {
+    newdata <- data.frame(row.names = seq_along(Y))
+  }
+
+  mu1_pred <- tryCatch(
+    {
+      predict(fit_1, newdata = newdata, type = "response")
+    },
+    error = function(e) {
+      rep(mean(Y[idx_1]), length(Y))
+    }
+  )
+
+  mu0_pred <- tryCatch(
+    {
+      predict(fit_0, newdata = newdata, type = "response")
+    },
+    error = function(e) {
+      rep(mean(Y[idx_0]), length(Y))
+    }
+  )
+
+  list(
+    fit_1 = fit_1,
+    fit_0 = fit_0,
+    mu1_pred = as.numeric(mu1_pred),
+    mu0_pred = as.numeric(mu0_pred),
+    formulas = list(treated = formula_1, control = formula_0)
+  )
+}
+
+#' Compute IPW weights
+#' @param A Treatment vector
+#' @param e Propensity scores
+#' @param weights Sample weights
+#' @param stabilize Whether to stabilize
+#' @return IPW weights
+compute_ipw_weights <- function(A, e, weights, stabilize) {
+  if (stabilize) {
+    # Stabilized weights
+    p_a <- mean(A) # Marginal treatment probability
+    numerator <- A * p_a + (1 - A) * (1 - p_a)
+  } else {
+    numerator <- 1
+  }
+
+  ipw_weights <- weights * numerator / (A * e + (1 - A) * (1 - e))
+
+  # Check for extreme weights
+  if (any(is.infinite(ipw_weights)) || any(ipw_weights < 0)) {
+    warning("Extreme IPW weights detected, check propensity score model")
+    ipw_weights[is.infinite(ipw_weights)] <- max(
+      ipw_weights[is.finite(ipw_weights)],
+      na.rm = TRUE
+    )
+    ipw_weights[ipw_weights < 0] <- 0
+  }
+
+  ipw_weights
+}
+
+#' Apply weight trimming
+#' @param weights Weight vector
+#' @param trim Trimming bounds
+#' @return Indices to keep
+apply_weight_trimming <- function(weights, trim) {
+  if (is.null(trim)) {
+    return(seq_along(weights))
+  }
+
+  lower_bound <- quantile(weights, trim[1], na.rm = TRUE)
+  upper_bound <- quantile(weights, trim[2], na.rm = TRUE)
+
+  which(weights >= lower_bound & weights <= upper_bound & !is.na(weights))
+}
+
+#' Compute effect measure from potential outcome means
+#' @param mu1 Mean under treatment
+#' @param mu0 Mean under control
+#' @param effect_measure Effect measure
+#' @return Effect estimate
+compute_effect_measure <- function(mu1, mu0, effect_measure) {
+  switch(
+    effect_measure,
+    "rd" = mu1 - mu0, # Risk difference
+    "rr" = {
+      # Risk ratio
+      if (mu0 == 0) {
+        warning("Control mean is 0, risk ratio undefined")
+        NA_real_
+      } else {
+        mu1 / mu0
+      }
+    },
+    "or" = {
+      # Odds ratio
+      if (mu0 == 0 || mu0 == 1 || mu1 == 0 || mu1 == 1) {
+        warning("Probabilities at boundary, odds ratio undefined")
+        NA_real_
+      } else {
+        (mu1 / (1 - mu1)) / (mu0 / (1 - mu0))
+      }
+    },
+    stop("Unknown effect measure: ", effect_measure)
+  )
+}
+
+#' Compute AIPW pseudo-outcomes
+#' @param Y Outcome vector
+#' @param A Treatment vector
+#' @param e Propensity scores
+#' @param mu1_hat Outcome predictions under treatment
+#' @param mu0_hat Outcome predictions under control
+#' @param weights Sample weights
+#' @param stabilize Whether to stabilize
+#' @return Pseudo-outcomes
+compute_aipw_pseudo_outcomes <- function(
+  Y,
+  A,
+  e,
+  mu1_hat,
+  mu0_hat,
+  weights,
+  stabilize
+) {
+  if (stabilize) {
+    p_a <- mean(A)
+    numerator_1 <- p_a
+    numerator_0 <- 1 - p_a
+  } else {
+    numerator_1 <- numerator_0 <- 1
+  }
+
+  # AIPW pseudo-outcomes
+  mu1_pseudo <- mu1_hat + numerator_1 * A * (Y - mu1_hat) / e
+  mu0_pseudo <- mu0_hat + numerator_0 * (1 - A) * (Y - mu0_hat) / (1 - e)
+
+  list(mu1 = mu1_pseudo, mu0 = mu0_pseudo)
+}
+
+#' Compute IPW influence function
+#' @param Y Outcome vector
+#' @param A Treatment vector
+#' @param e Propensity scores
+#' @param weights IPW weights
+#' @param mu1 Mean under treatment
+#' @param mu0 Mean under control
+#' @param effect_measure Effect measure
+#' @return Influence function
+compute_ipw_influence_function <- function(
+  Y,
+  A,
+  e,
+  weights,
+  mu1,
+  mu0,
+  effect_measure
+) {
+  n <- length(Y)
+
+  # IPW components
+  w1 <- A / e
+  w0 <- (1 - A) / (1 - e)
+
+  # Normalize by sum of weights
+  sum_w1 <- sum(w1)
+  sum_w0 <- sum(w0)
+
+  if1 <- w1 * (Y - mu1) / sum_w1
+  if0 <- w0 * (Y - mu0) / sum_w0
+
+  # Influence function for effect measure
+  switch(
+    effect_measure,
+    "rd" = if1 - if0,
+    "rr" = {
+      if (mu0 != 0) {
+        if1 / mu0 - mu1 * if0 / (mu0^2)
+      } else {
+        rep(NA_real_, n)
+      }
+    },
+    "or" = {
+      # Delta method for log odds ratio
+      if (mu1 != 0 && mu1 != 1 && mu0 != 0 && mu0 != 1) {
+        d_mu1 <- 1 / (mu1 * (1 - mu1))
+        d_mu0 <- -1 / (mu0 * (1 - mu0))
+        or_val <- (mu1 / (1 - mu1)) / (mu0 / (1 - mu0))
+        or_val * (d_mu1 * if1 + d_mu0 * if0)
+      } else {
+        rep(NA_real_, n)
+      }
+    },
+    stop("Unknown effect measure: ", effect_measure)
+  )
+}
+
+#' Compute AIPW influence function
+#' @param pseudo_outcomes Pseudo-outcomes
+#' @param weights Sample weights
+#' @param mu1 Mean under treatment
+#' @param mu0 Mean under control
+#' @param effect_measure Effect measure
+#' @return Influence function
+compute_aipw_influence_function <- function(
+  pseudo_outcomes,
+  weights,
+  mu1,
+  mu0,
+  effect_measure
+) {
+  # Weighted mean influence functions
+  W <- weights / sum(weights)
+
+  if1 <- W * (pseudo_outcomes$mu1 - mu1)
+  if0 <- W * (pseudo_outcomes$mu0 - mu0)
+
+  # Influence function for effect measure
+  switch(
+    effect_measure,
+    "rd" = if1 - if0,
+    "rr" = {
+      if (mu0 != 0) {
+        if1 / mu0 - mu1 * if0 / (mu0^2)
+      } else {
+        rep(NA_real_, length(if1))
+      }
+    },
+    "or" = {
+      # Delta method for log odds ratio
+      if (mu1 != 0 && mu1 != 1 && mu0 != 0 && mu0 != 1) {
+        d_mu1 <- 1 / (mu1 * (1 - mu1))
+        d_mu0 <- -1 / (mu0 * (1 - mu0))
+        or_val <- (mu1 / (1 - mu1)) / (mu0 / (1 - mu0))
+        or_val * (d_mu1 * if1 + d_mu0 * if0)
+      } else {
+        rep(NA_real_, length(if1))
+      }
+    },
+    stop("Unknown effect measure: ", effect_measure)
+  )
+}
+
+#' Weighted variance
+#' @param x Vector
+#' @param weights Weights
+#' @return Weighted variance
+wtd.var <- function(x, weights = NULL) {
+  if (is.null(weights)) {
+    return(var(x, na.rm = TRUE))
+  }
+
+  # Remove missing values
+  valid_idx <- !is.na(x) & !is.na(weights)
+  x <- x[valid_idx]
+  weights <- weights[valid_idx]
+
+  if (length(x) < 2) {
+    return(NA_real_)
+  }
+
+  if (all(weights == weights[1])) {
+    return(var(x))
+  }
+
+  w_mean <- weighted.mean(x, weights)
+  sum(weights * (x - w_mean)^2) / (sum(weights) - 1)
 }

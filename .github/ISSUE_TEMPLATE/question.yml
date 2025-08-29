@@ -1,0 +1,57 @@
+# .github/ISSUE_TEMPLATE/question.yml - Question template
+name: ❓ Question
+description: Ask a question about usage or methodology
+title: "[QUESTION] "
+labels: ["question", "help-wanted"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have a question? We're here to help! 🤝
+        
+        Before asking:
+        - Check the [documentation](https://diogoribeiro7.github.io/packages/unconfoundedr/)
+        - Search existing issues and discussions
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What would you like to know?
+      placeholder: How do I...?
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: |
+        Provide context about what you're trying to accomplish:
+        - What type of analysis are you doing?
+        - What data do you have?
+        - What have you tried so far?
+
+  - type: code
+    id: code
+    attributes:
+      label: Current Code (if applicable)
+      description: Share your current code attempt
+      language: r
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      description: What category does your question fall into?
+      options:
+        - "General usage"
+        - "Statistical methodology"
+        - "Data preparation"
+        - "Interpretation of results"
+        - "Performance optimization"
+        - "Integration with other packages"
+        - "Other"
+    validations:
+      required: true
