@@ -1,0 +1,117 @@
+name: pkgdown
+
+on:
+  push:
+    branches: [main, develop]
+    tags: ['*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  pkgdown:
+    runs-on: ubuntu-latest
+
+    # Restrict concurrency for non-PR runs; allow PRs to run in parallel.
+    concurrency:
+      group: ${{ github.event_name == 'pull_request' && format('pkgdown-pr-{0}', github.run_id) || format('pkgdown-{0}-{1}', github.workflow, github.ref) }}
+      cancel-in-progress: true
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      BLOG_REPO: DiogoRibeiro7/DiogoRibeiro7.github.io
+      PKG_SLUG: ${{ github.event.repository.name }}         # e.g., unconfoundedr
+      BLOG_DEST: packages/${{ github.event.repository.name }}  # packages/unconfoundedr
+      # If your blog uses Jekyll, this URL will serve: https://diogoribeiro7.github.io/packages/<pkg>/
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: |
+            any::pkgdown
+            local::.
+          needs: website
+
+      - name: Build site into docs/
+        # build_site_github_pages() is fine too; build_site() keeps things simple here.
+        run: pkgdown::build_site(preview = FALSE)
+        shell: Rscript {0}
+
+      - name: Checkout blog repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.BLOG_REPO }}
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # PAT with repo:write on the blog repo
+          path: blog-repo
+
+      - name: Sync package docs to blog (includes dotfiles)
+        run: |
+          mkdir -p "blog-repo/${BLOG_DEST}"
+          # Copy *including* dotfiles and delete removed files on destination
+          rsync -av --delete docs/ "blog-repo/${BLOG_DEST}/"
+          # Optional: ensure an index.html exists (pkgdown creates it)
+          ls -la "blog-repo/${BLOG_DEST}"
+
+      - name: Create/refresh Packages index page
+        run: |
+          mkdir -p blog-repo/packages
+          cat > blog-repo/packages/index.md << 'EOF'
+          ---
+          layout: single
+          title: "R Packages"
+          permalink: /packages/
+          author_profile: true
+          header:
+            image: /assets/images/data_science_1.jpg
+            overlay_image: /assets/images/data_science_1.jpg
+            teaser: /assets/images/data_science_1.jpg
+            show_overlay_excerpt: false
+            twitter_image: /assets/images/data_science_1.jpg
+            og_image: /assets/images/data_science_1.jpg
+          seo_type: article
+          ---
+
+          # R Packages
+
+          This section contains documentation for R packages I've developed.
+
+          ## Available Packages
+
+          - [${{ env.PKG_SLUG }}](/packages/${{ env.PKG_SLUG }}/)
+          EOF
+
+      - name: Ensure navigation link exists
+        run: |
+          NAV="blog-repo/_data/navigation.yml"
+          if [ ! -f "$NAV" ]; then
+            mkdir -p "$(dirname "$NAV")"
+            echo "- title: \"Packages\"\n  url: /packages/" > "$NAV"
+          else
+            if ! grep -qE '(^|\s)Packages(\s|:)' "$NAV"; then
+              printf "\n- title: \"Packages\"\n  url: /packages/\n" >> "$NAV"
+            fi
+          fi
+          echo "---- navigation.yml ----"
+          cat "$NAV"
+
+      - name: Commit and push changes to blog
+        run: |
+          cd blog-repo
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update ${PKG_SLUG} pkgdown documentation"
+            git push
+          fi

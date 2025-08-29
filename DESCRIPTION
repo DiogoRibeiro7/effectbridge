@@ -1,22 +1,27 @@
 Package: unconfoundedr
-Title: What the Package Does (One Line, Title Case)
-Version: 0.0.0.9000
-Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
-License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
-    license
+Title: Test Unconfoundedness by Comparing RCT and Observational Effects
+Version: 0.1.0
+Authors@R: c(person(given = "Ribeiro", family = "Diogo", role = c("aut","cre"),
+                    email = "diogo.debastos.ribeiro@gmail.com"))
+Description: Provides a hypothesis test for unmeasured confounding by
+    comparing a marginal treatment effect estimated in an RCT-like dataset
+    with the same estimand in an observational dataset. Includes IPW and
+    AIPW (doubly-robust) estimators, bootstrap CIs, Wald test based on the
+    AIPW influence function, and basic overlap diagnostics.
+License: MIT + file LICENSE
 Encoding: UTF-8
-Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
-Suggests: 
-    covr,
-    graphics,
-    knitr,
-    rmarkdown,
-    testthat (>= 3.0.0)
-Config/testthat/edition: 3
-VignetteBuilder: knitr
-Imports: 
+Depends: R (>= 4.1)
+Imports:
     stats,
     utils
+Suggests:
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown,
+    covr,
+    graphics,
+    energy
+Config/testthat/edition: 3
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+

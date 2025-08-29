@@ -1,0 +1,71 @@
+url: https://diogoribeiro7.github.io/packages/unconfoundedr/
+
+template:
+  bootstrap: 5
+  # bootswatch: cosmo
+  bslib:
+    primary: "#0054AD"
+    navbar-light-brand-color: "#0054AD"
+    navbar-light-brand-hover-color: "#0054AD"
+    navbar-light-active-color: "#0054AD"
+    navbar-light-hover-color: "#0054AD"
+    navbar-light-color: "#0054AD"
+
+development:
+  mode: auto
+
+authors:
+  Diogo Ribeiro:
+    href: "https://github.com/DiogoRibeiro7"
+
+navbar:
+  structure:
+    left: [intro, reference, articles, news, tutorials]
+    right: [search, github, blog]
+  components:
+    articles:
+      text: Articles
+      menu:
+        - text: Getting Started
+          href: articles/intro.html
+        - text: Advanced Usage
+          href: articles/advanced.html
+    reference:
+      text: Reference
+      href: reference/index.html
+    github:
+      icon: fab fa-github fa-lg
+      aria-label: GitHub
+      href: https://github.com/DiogoRibeiro7/unconfoundedr
+    news:
+      text: News
+      href: news/index.html
+    blog:
+      text: "← Back to Blog"
+      href: https://diogoribeiro7.github.io/
+
+reference:
+  - title: "Main Functions"
+    desc: >
+      The core testing functions of the package
+    contents:
+      - unconfoundedness_test
+      - print.unconf_test
+
+home:
+  sidebar:
+    structure: [links, license, community, citation, authors, dev, blog_link]
+    components:
+      citation:
+        title: Citation
+        text: If you use this package, please cite it.
+      community:
+        title: Community
+        text: >
+          If you have questions or issues about the package, please file an issue on
+          [GitHub](https://github.com/DiogoRibeiro7/unconfoundedr/issues).
+      blog_link:
+        title: "Data Science Blog"
+        text: >
+          Check out my [data science blog](https://diogoribeiro7.github.io/) for more content 
+          on statistics, machine learning, and R programming.
