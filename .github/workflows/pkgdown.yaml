@@ -50,7 +50,6 @@ jobs:
             any::roxygen2
             any::pkgdown
             any::rmarkdown
-            local::.
           needs: website
 
       # Quick sanity check to fail fast if Pandoc isn't visible to rmarkdown

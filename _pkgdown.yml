@@ -45,25 +45,16 @@ navbar:
 
 reference:
   - title: "Main Functions"
+    desc: "Core testing functions of the package"
     contents:
       - unconfoundedness_test
       - print.unconf_test
-      - summary.unconf_test
-      - plot.unconf_test
 
-  - title: "Diagnostics & utilities"
+  # NEW: catch-all so pkgdown doesn't fail when topics aren't listed above
+  - title: "All functions"
+    desc: "Complete index of exported functions"
     contents:
-      - matches("diagnostic|assess|balance|overlap|sensitivity|e_?value")
-      - starts_with("compute_")
-      - starts_with("estimate_")
-      - starts_with("perform_")
-      - starts_with("fit_")
-
-  # Include but de-emphasize internals
-  - title: "Internals"
-    desc: "Non-API helpers"
-    contents:
-      - has_keyword("internal")
+      - everything
 
 home:
   title: "unconfoundedr"
