@@ -60,7 +60,7 @@ jobs:
       # Upload SARIF from the SAME job that created it
       - name: Upload SARIF (oysteR)
         if: always() && hashFiles('r-vulnerabilities.sarif') != ''
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: r-vulnerabilities.sarif
           category: r-packages
