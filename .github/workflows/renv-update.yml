@@ -5,7 +5,6 @@ on:
   schedule:
     - cron: "0 6 * * 1"   # Mondays 06:00 UTC
 
-# ✅ allow the workflow to push a branch and open a PR
 permissions:
   contents: write
   pull-requests: write
@@ -14,13 +13,15 @@ jobs:
   renv:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # ✅ let create-pull-request manage its own credentials
+          # Let create-pull-request manage its own credentials
           persist-credentials: false
 
-      - uses: r-lib/actions/setup-r@v2
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
         with:
           r-version: "release"
 
@@ -31,30 +32,28 @@ jobs:
         id: renv
         shell: bash
         run: |
-          Rscript - <<'RSCRIPT'
-          if (!file.exists("renv.lock")) {
-            message("No renv.lock found — bootstrapping…")
-            renv::init(bare = TRUE)
-            # Optionally install dev deps here:
-            # renv::install(c("devtools","roxygen2","testthat"))
-            renv::snapshot(prompt = FALSE)
+          set -euo pipefail
+
+          if [ ! -f "renv.lock" ]; then
+            echo "No renv.lock found — bootstrapping…"
+            Rscript -e 'renv::init(bare = TRUE); renv::snapshot(prompt = FALSE)'
             # keep renv out of package tarballs
-            rb <- ".Rbuildignore"
-            add_line <- function(pat) {
-              if (!file.exists(rb) || !any(grepl(pat, readLines(rb), perl=TRUE))) {
-                cat(pat, file = rb, sep = "\n", append = TRUE)
-              }
+            rb=".Rbuildignore"
+            add_line () {
+              local pat="$1"
+              if [ ! -f "$rb" ] || ! grep -Pq "$pat" "$rb"; then
+                printf "%s\n" "$pat" >> "$rb"
+              fi
             }
-            add_line("^renv($|/)")
-            add_line("^renv\\.lock$")
-            add_line("^\\.Rprofile$")
-            cat("BOOTSTRAPPED=1\n", file = Sys.getenv("GITHUB_OUTPUT"), append = TRUE)
-          } else {
-            message("renv.lock found — restoring…")
-            renv::restore(prompt = FALSE)
-            cat("BOOTSTRAPPED=0\n", file = Sys.getenv("GITHUB_OUTPUT"), append = TRUE)
-          }
-          RSCRIPT
+            add_line '^renv($|/)'
+            add_line '^renv\.lock$'
+            add_line '^\..Rprofile$'
+            echo "BOOTSTRAPPED=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "renv.lock found — restoring…"
+            Rscript -e 'renv::restore(prompt = FALSE)'
+            echo "BOOTSTRAPPED=0" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Create PR with initial lockfile
         if: steps.renv.outputs.BOOTSTRAPPED == '1'
@@ -64,9 +63,11 @@ jobs:
           title: "chore(renv): bootstrap renv"
           body: "Initial `renv` setup: adds `.Rprofile`, `renv/activate.R`, and `renv.lock`."
           branch: "chore/renv-bootstrap"
-          labels:
-            - dependencies
-            - R
-          reviewers: diogoribeiro7
+          labels: |
+            dependencies
+            R
+          reviewers: |
+            diogoribeiro7
           signoff: false
-          # uses the workflow GITHUB_TOKEN automatically; no PAT needed
+          # Uses the workflow GITHUB_TOKEN automatically; no PAT needed
+
