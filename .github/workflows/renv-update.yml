@@ -64,7 +64,9 @@ jobs:
           title: "chore(renv): bootstrap renv"
           body: "Initial `renv` setup: adds `.Rprofile`, `renv/activate.R`, and `renv.lock`."
           branch: "chore/renv-bootstrap"
-          labels: dependencies,R
+          labels:
+            - dependencies
+            - R
           reviewers: diogoribeiro7
           signoff: false
           # uses the workflow GITHUB_TOKEN automatically; no PAT needed
