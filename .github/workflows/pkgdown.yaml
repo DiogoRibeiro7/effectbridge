@@ -29,7 +29,7 @@ jobs:
 
     steps:
       - name: Checkout package repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       # Ensure a known-good Pandoc is on PATH
       - name: Setup Pandoc
@@ -69,7 +69,7 @@ jobs:
         run: pkgdown::build_site(preview = FALSE)
 
       - name: Checkout blog repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: ${{ env.BLOG_REPO }}
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # PAT with repo write access to the blog repo
