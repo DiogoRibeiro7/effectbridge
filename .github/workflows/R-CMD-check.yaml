@@ -138,7 +138,7 @@ jobs:
 
       - name: Upload check results
         if: failure()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.config.artifact-name }}-results
           path: check
@@ -224,7 +224,7 @@ jobs:
           saveRDS(res, "benchmark_results.rds")
         shell: Rscript {0}
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: benchmark-results
           path: benchmark_results.rds
