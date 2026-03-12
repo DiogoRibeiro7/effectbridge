@@ -15,5 +15,5 @@ test_that("unconfoundedness_test runs with AIPW small n", {
     estimator = "aipw", B = 10, validate = FALSE
   )
   expect_s3_class(res, "unconf_test")
-  expect_true(is.list(res$effects))
+  expect_true(is.list(res$raw_effects))
 })

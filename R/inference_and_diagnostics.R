@@ -160,6 +160,19 @@ compute_diagnostics <- function(
 #' @param e_obs Observational propensity scores
 #' @return Overlap diagnostics
 compute_overlap_diagnostics <- function(A_rct, A_obs, e_rct, e_obs) {
+    # Handle estimators that don't produce propensity scores (e.g., gcomp)
+    if (is.null(e_rct) || is.null(e_obs) || length(e_rct) == 0 || length(e_obs) == 0) {
+        prev_rct <- mean(A_rct)
+        prev_obs <- mean(A_obs)
+        return(list(
+            propensity_score_range = list(rct = c(NA, NA), obs = c(NA, NA)),
+            extreme_ps_proportion = list(rct = 0, obs = 0),
+            treatment_prevalence = list(rct = prev_rct, obs = prev_obs),
+            overlap_statistic = NA_real_,
+            overlap_quality = "Unknown (no propensity scores)"
+        ))
+    }
+
     # Propensity score ranges
     ps_range_rct <- range(e_rct)
     ps_range_obs <- range(e_obs)
@@ -389,7 +402,7 @@ compute_model_diagnostics <- function(effects, family_y) {
 #' @param model GLM model object
 #' @return Model diagnostics
 extract_model_diagnostics <- function(model) {
-    if (is.null(model)) {
+    if (is.null(model) || !inherits(model, "glm")) {
         return(NULL)
     }
 
@@ -499,6 +512,14 @@ compute_e_value <- function(obs_effect, rct_effect, effect_measure) {
         ratio_of_rr <- rr_obs / rr_rct
     }
 
+    # Guard against NA/NaN/Inf
+    if (is.na(ratio_of_rr) || !is.finite(ratio_of_rr)) {
+        return(list(
+            e_value = NA_real_,
+            interpretation = interpret_e_value(NA_real_)
+        ))
+    }
+
     # E-value formula
     if (abs(ratio_of_rr - 1) < 1e-6) {
         e_value <- 1.0
@@ -519,6 +540,9 @@ compute_e_value <- function(obs_effect, rct_effect, effect_measure) {
 #' @param e_value E-value
 #' @return Interpretation
 interpret_e_value <- function(e_value) {
+    if (is.na(e_value) || !is.finite(e_value)) {
+        return("Cannot compute (undefined)")
+    }
     if (e_value < 1.5) {
         "Very fragile to unmeasured confounding"
     } else if (e_value < 2.0) {
@@ -946,6 +970,9 @@ bootstrap_inference <- function(
         }
     }
 
+    # Remove failed replicates
+    boot_diffs <- boot_diffs[!is.na(boot_diffs)]
+
     # Compute statistics
     se <- sd(boot_diffs)
     ci <- quantile(boot_diffs, c(alpha / 2, 1 - alpha / 2))
@@ -1001,30 +1028,38 @@ single_bootstrap_replicate <- function(
         )
     }
 
-    # Estimate effects on bootstrap samples
-    rct_effect_b <- estimate_single_effect(
-        Y_rct_b,
-        A_rct_b,
-        X_rct_b,
-        weights_b$w_rct,
-        estimator,
-        effect_measure,
-        family_y,
-        stabilize = TRUE,
-        trim = NULL
+    # Estimate effects on bootstrap samples (skip degenerate resamples)
+    rct_effect_b <- tryCatch(
+        estimate_single_effect(
+            Y_rct_b,
+            A_rct_b,
+            X_rct_b,
+            weights_b$w_rct,
+            estimator,
+            effect_measure,
+            family_y,
+            stabilize = TRUE,
+            trim = NULL
+        ),
+        error = function(e) return(NULL)
     )
+    if (is.null(rct_effect_b)) return(NA_real_)
 
-    obs_effect_b <- estimate_single_effect(
-        Y_obs_b,
-        A_obs_b,
-        X_obs_b,
-        weights_b$w_obs,
-        estimator,
-        effect_measure,
-        family_y,
-        stabilize = TRUE,
-        trim = NULL
+    obs_effect_b <- tryCatch(
+        estimate_single_effect(
+            Y_obs_b,
+            A_obs_b,
+            X_obs_b,
+            weights_b$w_obs,
+            estimator,
+            effect_measure,
+            family_y,
+            stabilize = TRUE,
+            trim = NULL
+        ),
+        error = function(e) return(NULL)
     )
+    if (is.null(obs_effect_b)) return(NA_real_)
 
     # Return difference
     compute_effect_difference(rct_effect_b, obs_effect_b, effect_measure)

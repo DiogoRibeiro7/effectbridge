@@ -1,3 +1,15 @@
+# unconfoundedr 0.2.1 (development)
+
+## Maintenance
+
+- Improved repository hygiene by cleaning and expanding `.gitignore`:
+
+  - removed duplicate patterns,
+  - added common R build/check artifacts (`*.Rcheck/`, `*.tar.gz`, `check/`),
+  - added additional local/session ignores (`.Ruserdata`, `renv/library/`, `renv/python/`),
+  - added local tooling cache ignores (`.pytest_cache/`, `.claude/`),
+  - kept documentation/build output ignores (`docs/`, `pkgdown/`, `.quarto/`).
+
 # unconfoundedr 0.2.0
 
 ## Fixes

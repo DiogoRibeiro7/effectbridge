@@ -13,7 +13,7 @@ Description: Compare marginal treatment effects from RCT-like and observational
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 URL: https://diogoribeiro7.github.io/packages/unconfoundedr/, https://github.com/DiogoRibeiro7/unconfoundedr
 BugReports: https://github.com/DiogoRibeiro7/unconfoundedr/issues
 Depends: 
