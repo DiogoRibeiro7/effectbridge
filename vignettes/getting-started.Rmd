@@ -8,12 +8,20 @@ output:
     toc_depth: 3
 vignette: >-
   %\VignetteIndexEntry{Getting Started with unconfoundedr}
-  %\VignetteEngine{knitr::rmarkdown} %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE} knitr::opts_chunk$set( collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5, warning = FALSE, message = FALSE )
-
-````
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5,
+  warning = FALSE,
+  message = FALSE
+)
+```
 
 # Introduction
 
@@ -28,7 +36,7 @@ When making causal inferences from observational data, we assume that all confou
 ```{r setup}
 library(unconfoundedr)
 set.seed(42)
-````
+```
 
 # Basic Usage
 
@@ -37,24 +45,35 @@ set.seed(42)
 Let's start by creating example datasets with known properties:
 
 ```{r generate_data}
-
 # RCT data: randomized treatment, no unmeasured confounding
-
-rct_data <- generate_rct_data( n = 500, p_covariates = 3, treatment_effect = 1.0, outcome_type = "continuous", seed = 123 )
+rct_data <- generate_rct_data(
+  n = 500,
+  p_covariates = 3,
+  treatment_effect = 1.0,
+  outcome_type = "continuous",
+  seed = 123
+)
 
 # Observational data: confounded treatment assignment
-
-obs_data <- generate_obs_data( n = 1000, p_covariates = 3, treatment_effect = 1.0, # Same true effect confounding_strength = 0.4, # But with confounding bias covariate_shift = TRUE, # And population differences outcome_type = "continuous", seed = 456 )
+obs_data <- generate_obs_data(
+  n = 1000,
+  p_covariates = 3,
+  treatment_effect = 1.0,        # Same true effect
+  confounding_strength = 0.4,    # But with confounding bias
+  covariate_shift = TRUE,        # And population differences
+  outcome_type = "continuous",
+  seed = 456
+)
 
 # Examine the data structure
-
-head(rct_data) head(obs_data)
+head(rct_data)
+head(obs_data)
 
 # Treatment prevalence comparison
+cat("RCT treatment prevalence:", mean(rct_data$A), "\n")
+cat("Observational treatment prevalence:", mean(obs_data$A), "\n")
+```
 
-cat("RCT treatment prevalence:", mean(rct_data$A), "\n") cat("Observational treatment prevalence:", mean(obs_data$A), "\n")
-
-````
 ## Basic Unconfoundedness Test
 
 Now let's run the basic test:
@@ -68,13 +87,13 @@ result <- unconfoundedness_test(
   effect_measure = "rd",              # Risk difference
   transport = "none",                 # No transportability adjustment yet
   inference_method = "bootstrap",     # Bootstrap inference
-  B = 500,                           # Bootstrap replicates (reduced for speed)
+  B = 500,                            # Bootstrap replicates (reduced for speed)
   seed = 42
 )
 
 # Print results
 print(result)
-````
+```
 
 ## Interpreting the Results
 
@@ -83,7 +102,7 @@ The output shows:
 - **RCT effect**: The treatment effect estimated from the RCT-like data
 - **Observational effect**: The treatment effect from observational data
 - **Difference**: The key quantity testing unconfoundedness
-- **P-value**: Tests H₀: difference = 0 (unconfoundedness holds)
+- **P-value**: Tests H0: difference = 0 (unconfoundedness holds)
 - **E-value**: Robustness to unmeasured confounding
 
 In this case, we expect to see a significant difference because we introduced confounding in the observational data.
@@ -95,18 +114,26 @@ In this case, we expect to see a significant difference because we introduced co
 When the RCT and observational populations differ, we can adjust for this using transportability weights:
 
 ```{r transportability}
-
 # Test with automatic covariate shift detection
-
-result_auto <- unconfoundedness_test( data_rct = rct_data, data_obs = obs_data, formula = Y ~ A + X1 + X2 + X3, estimator = "aipw", transport = "auto", # Automatic shift detection auto_method = "both", # Use both KS and energy tests auto_alpha = 0.01, # Significance level for shift tests B = 500, seed = 42 )
+result_auto <- unconfoundedness_test(
+  data_rct = rct_data,
+  data_obs = obs_data,
+  formula = Y ~ A + X1 + X2 + X3,
+  estimator = "aipw",
+  transport = "auto",          # Automatic shift detection
+  auto_method = "both",        # Use both KS and energy tests
+  auto_alpha = 0.01,           # Significance level for shift tests
+  B = 500,
+  seed = 42
+)
 
 print(result_auto)
 
 # Check if transport was applied
+cat("Transport applied:", result_auto$methods$transport_applied, "\n")
+cat("Shift detected:", result_auto$diagnostics$auto_detection$shift_detected, "\n")
+```
 
-cat("Transport applied:", result_auto$methods$transport_applied, "\n") cat("Shift detected:", result_auto$diagnostics$auto_detection$shift_detected, "\n")
-
-````
 ## Multiple Estimators
 
 Compare results across different estimation methods:
@@ -138,31 +165,57 @@ comparison_df <- data.frame(
 )
 
 print(comparison_df)
-````
+```
 
 ## Binary Outcomes and Different Effect Measures
 
 For binary outcomes, we can use different effect measures:
 
 ```{r binary_outcomes}
-
 # Generate binary outcome data
-
-rct_binary <- generate_rct_data(n = 400, outcome_type = "binary", treatment_effect = 0.5, seed = 789) obs_binary <- generate_obs_data(n = 600, outcome_type = "binary", treatment_effect = 0.5, confounding_strength = 0.3, seed = 999)
+rct_binary <- generate_rct_data(
+  n = 400,
+  outcome_type = "binary",
+  treatment_effect = 0.5,
+  seed = 789
+)
+obs_binary <- generate_obs_data(
+  n = 600,
+  outcome_type = "binary",
+  treatment_effect = 0.5,
+  confounding_strength = 0.3,
+  seed = 999
+)
 
 # Test different effect measures
+effect_measures <- c("rd", "rr", "or")
+binary_results <- list()
 
-effect_measures <- c("rd", "rr", "or") binary_results <- list()
-
-for (measure in effect_measures) { binary_results[[measure]] <- unconfoundedness_test( data_rct = rct_binary, data_obs = obs_binary, formula = Y ~ A + X1 + X2, effect_measure = measure, family_y = "binomial", estimator = "aipw", B = 300, seed = 42 ) }
+for (measure in effect_measures) {
+  binary_results[[measure]] <- unconfoundedness_test(
+    data_rct = rct_binary,
+    data_obs = obs_binary,
+    formula = Y ~ A + X1 + X2,
+    effect_measure = measure,
+    family_y = "binomial",
+    estimator = "aipw",
+    B = 300,
+    seed = 42
+  )
+}
 
 # Summary
-
-binary_summary <- data.frame( Effect_Measure = names(binary_results), RCT_Effect = sapply(binary_results, function(x) x$estimates$rct), Obs_Effect = sapply(binary_results, function(x) x$estimates$observational), P_Value = sapply(binary_results, function(x) x$inference$p_value), stringsAsFactors = FALSE )
+binary_summary <- data.frame(
+  Effect_Measure = names(binary_results),
+  RCT_Effect = sapply(binary_results, function(x) x$estimates$rct),
+  Obs_Effect = sapply(binary_results, function(x) x$estimates$observational),
+  P_Value = sapply(binary_results, function(x) x$inference$p_value),
+  stringsAsFactors = FALSE
+)
 
 print(binary_summary)
+```
 
-````
 # Diagnostic Visualizations
 
 The package provides several diagnostic plots:
@@ -184,7 +237,7 @@ if (result_auto$methods$transport_applied) {
 
 # Bootstrap distribution
 plot(result_auto, type = "bootstrap")
-````
+```
 
 # Detailed Diagnostics
 
@@ -193,12 +246,11 @@ plot(result_auto, type = "bootstrap")
 Get comprehensive diagnostics:
 
 ```{r detailed_summary}
-
 # Comprehensive summary
+summary_result <- summary(result_auto)
+print(summary_result)
+```
 
-summary_result <- summary(result_auto) print(summary_result)
-
-````
 ## Key Diagnostic Indicators
 
 ```{r diagnostic_indicators}
@@ -206,9 +258,9 @@ summary_result <- summary(result_auto) print(summary_result)
 cat("Overlap quality:", result_auto$diagnostics$overlap$overlap_quality, "\n")
 
 # Extreme propensity scores
-cat("RCT extreme PS:", 
+cat("RCT extreme PS:",
     round(100 * result_auto$diagnostics$overlap$extreme_ps_proportion$rct, 1), "%\n")
-cat("Obs extreme PS:", 
+cat("Obs extreme PS:",
     round(100 * result_auto$diagnostics$overlap$extreme_ps_proportion$obs, 1), "%\n")
 
 # Sample sizes
@@ -218,28 +270,39 @@ cat("  Obs:", round(result_auto$diagnostics$sample_size$effective_n$obs), "\n")
 
 # E-value interpretation
 if (!is.null(result_auto$sensitivity$e_value)) {
-  cat("E-value:", round(result_auto$sensitivity$e_value$e_value, 2), 
+  cat("E-value:", round(result_auto$sensitivity$e_value$e_value, 2),
       "(", result_auto$sensitivity$e_value$interpretation, ")\n")
 }
-````
+```
 
 # Power Analysis
 
 Evaluate the power of the test under different scenarios:
 
 ```{r power_analysis}
-
 # Small power analysis (use larger n_sim in practice)
-
-power_result <- simulate_power_analysis( n_sim = 50, # Use 1000+ in practice n_rct = 300, n_obs = 500, treatment_effect_rct = 1.0, treatment_effect_obs = 1.3, # 30% bias confounding_strength = 0.4, alpha = 0.05, seed = 123 )
+power_result <- simulate_power_analysis(
+  n_sim = 50,                       # Use 1000+ in practice
+  n_rct = 300,
+  n_obs = 500,
+  treatment_effect_rct = 1.0,
+  treatment_effect_obs = 1.3,       # 30% bias
+  confounding_strength = 0.4,
+  alpha = 0.05,
+  seed = 123
+)
 
 print(power_result$results)
 
 # Plot power simulation results
+hist(power_result$raw_results$differences,
+     main = "Distribution of Estimated Differences",
+     xlab = "Difference (Obs - RCT)",
+     col = "lightblue", border = "black")
+abline(v = power_result$settings$true_difference, col = "red", lwd = 2, lty = 2)
+legend("topright", "True Difference", col = "red", lty = 2, lwd = 2)
+```
 
-hist(power_result$raw_results$differences, main = "Distribution of Estimated Differences", xlab = "Difference (Obs - RCT)", col = "lightblue", border = "black") abline(v = power_result$settings$true_difference, col = "red", lwd = 2, lty = 2) legend("topright", "True Difference", col = "red", lty = 2, lwd = 2)
-
-````
 # Export and Reporting
 
 ## Export Results
@@ -250,32 +313,43 @@ export_to_csv(result_auto, file = "unconfoundedness_results.csv")
 
 # Create LaTeX table
 create_latex_table(result_auto, file = "results_table.tex",
-                  caption = "Unconfoundedness Test Results")
+                   caption = "Unconfoundedness Test Results")
 
 # Generate diagnostic report
-create_diagnostic_report(result_auto, file = "diagnostics_report.html", 
-                        format = "html")
-````
+create_diagnostic_report(result_auto, file = "diagnostics_report.html",
+                         format = "html")
+```
 
 ## Batch Analysis
 
 Process multiple dataset comparisons:
 
 ```{r batch_analysis}
-
 # Create multiple dataset pairs
+rct_studies <- list(
+  study1 = rct_data[1:200, ],
+  study2 = rct_data[201:400, ]
+)
 
-rct_studies <- list( study1 = rct_data[1:200, ], study2 = rct_data[201:400, ] )
-
-obs_studies <- list( study1 = obs_data[1:400, ], study2 = obs_data[401:800, ] )
+obs_studies <- list(
+  study1 = obs_data[1:400, ],
+  study2 = obs_data[401:800, ]
+)
 
 # Batch processing
-
-batch_results <- batch_analysis( rct_data_list = rct_studies, obs_data_list = obs_studies, formula = Y ~ A + X1 + X2 + X3, estimator = "aipw", transport = "auto", B = 200, # Reduced for speed validate = FALSE # Skip validation for demo )
+batch_results <- batch_analysis(
+  rct_data_list = rct_studies,
+  obs_data_list = obs_studies,
+  formula = Y ~ A + X1 + X2 + X3,
+  estimator = "aipw",
+  transport = "auto",
+  B = 200,               # Reduced for speed
+  validate = FALSE        # Skip validation for demo
+)
 
 print(batch_results)
+```
 
-````
 # Practical Guidelines
 
 ## Choosing Parameters
@@ -292,6 +366,7 @@ print(batch_results)
 - **"auto"**: Let the data decide (recommended)
 
 ### Sample Size Considerations
+
 ```{r sample_size}
 # Estimate required sample sizes
 required_n <- compute_required_sample_size(
@@ -301,28 +376,33 @@ required_n <- compute_required_sample_size(
   ratio_obs_to_rct = 2
 )
 print(required_n)
-````
+```
 
 ## Interpretation Framework
 
-Scenario | P-value | E-value | Interpretation
--------- | ------- | ------- | ---------------------------
-p > 0.05 | --      | > 2.0   | ✅ Supports unconfoundedness
-p < 0.05 | < 1.5   | --      | 🚨 Fragile, investigate
-p < 0.01 | > 2.0   | --      | ⚠️ Significant but robust
-p < 0.01 | < 1.5   | --      | 🚨 Strong evidence of bias
+| Scenario | P-value | E-value | Interpretation |
+|----------|---------|---------|----------------|
+| p > 0.05 | --      | > 2.0   | Supports unconfoundedness |
+| p < 0.05 | < 1.5   | --      | Fragile, investigate |
+| p < 0.01 | > 2.0   | --      | Significant but robust |
+| p < 0.01 | < 1.5   | --      | Strong evidence of bias |
 
 ## Common Issues and Solutions
 
 ### Poor Overlap
 
 ```{r poor_overlap_demo, eval=FALSE}
-
 # If overlap is poor, consider trimming
+result_trimmed <- unconfoundedness_test(
+  data_rct = rct_data,
+  data_obs = obs_data,
+  formula = Y ~ A + X1 + X2 + X3,
+  trim = c(0.05, 0.95),     # Trim extreme 10%
+  estimator = "aipw",
+  B = 500
+)
+```
 
-result_trimmed <- unconfoundedness_test( data_rct = rct_data, data_obs = obs_data, formula = Y ~ A + X1 + X2 + X3, trim = c(0.05, 0.95), # Trim extreme 10% estimator = "aipw", B = 500 )
-
-````
 ### Small Sample Sizes
 - Increase bootstrap replicates (B)
 - Use analytical inference when possible
@@ -341,8 +421,8 @@ validate_installation()
 
 # Test with known null case (same data generation process)
 rct_null <- generate_rct_data(n = 300, treatment_effect = 1.0, seed = 111)
-obs_null <- generate_obs_data(n = 400, treatment_effect = 1.0, 
-                             confounding_strength = 0, seed = 222)  # No confounding
+obs_null <- generate_obs_data(n = 400, treatment_effect = 1.0,
+                              confounding_strength = 0, seed = 222)  # No confounding
 
 null_result <- unconfoundedness_test(
   rct_null, obs_null, Y ~ A + X1 + X2,
@@ -351,7 +431,7 @@ null_result <- unconfoundedness_test(
 
 cat("Null case p-value:", round(null_result$inference$p_value, 3), "\n")
 cat("Should be > 0.05 for correct type I error control\n")
-````
+```
 
 # Conclusion
 
@@ -371,6 +451,6 @@ For more advanced features and detailed methodology, see the package documentati
 - VanderWeele, T. J., & Ding, P. (2017). Sensitivity analysis in observational research: introducing the E-value. _Annals of Internal Medicine_, 167(4), 268-274.
 - Stuart, E. A. (2010). Matching methods for causal inference: A review and a look forward. _Statistical Science_, 25(1), 1-21.
 
---------------------------------------------------------------------------------
+---
 
 _This vignette demonstrates the main functionality of unconfoundedr. For questions or issues, please visit our [GitHub repository](https://github.com/DiogoRibeiro7/unconfoundedr)._

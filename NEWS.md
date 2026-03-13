@@ -1,5 +1,41 @@
 # unconfoundedr 0.2.1 (development)
 
+## Improvements
+
+- Refactored monolithic source into focused modules for maintainability:
+
+  - `unconfoundedness_test.R`: main function, validation, formula parsing.
+  - `estimators.R`: IPW, AIPW, TMLE, G-computation, matching implementations.
+  - `inference_and_diagnostics.R`: inference methods and diagnostic suite.
+  - `methods.R`: S3 print/summary methods.
+  - `plotting.R`: all visualization functions.
+  - `transport.R`: transport weighting and covariate shift detection.
+  - `utils_and_helpers.R`: data generators, batch analysis, reporting utilities.
+
+- Organized pkgdown reference into categorized sections (Core Testing,
+  Data Generation, Power & Sample Size, S3 Methods, Reporting, Utilities).
+
+- Standardized code style to 2-space indentation across all source files.
+
+- Removed unused internal helpers (`%nin%`, `safe_extract`).
+
+- Expanded test suite to 7 files covering estimators, validation, transport,
+  methods/plotting, and utilities.
+
+- Added `.lintr` configuration for consistent linting across contributors.
+
+- Rewrote `getting-started` vignette: fixed malformed code chunks (broken
+  line breaks and extra backticks) and properly formatted all R examples.
+
+- Expanded `test-sim.R` with thorough data generator tests (sample sizes,
+  covariate counts, binary outcomes, reproducibility, covariate shift, and
+  confounding strength).
+
+- Updated `CITATION.cff`: synced email with DESCRIPTION, added ORCID,
+  updated abstract to reflect all five estimators, fixed package URL.
+
+- Added `Language: en` field to DESCRIPTION.
+
 ## Maintenance
 
 - Improved repository hygiene by cleaning and expanding `.gitignore`:
@@ -9,6 +45,13 @@
   - added additional local/session ignores (`.Ruserdata`, `renv/library/`, `renv/python/`),
   - added local tooling cache ignores (`.pytest_cache/`, `.claude/`),
   - kept documentation/build output ignores (`docs/`, `pkgdown/`, `.quarto/`).
+
+- Fixed incorrect variable reference in README example code.
+
+- Fixed Codecov badge to reference `develop` branch instead of `main`.
+
+- Removed broken `DEVELOPMENT.md` link from README (content already in
+  CONTRIBUTING.md).
 
 # unconfoundedr 0.2.0
 

@@ -4,7 +4,7 @@
 
 [![R-CMD-check](https://img.shields.io/github/actions/workflow/status/diogoribeiro7/unconfoundedr/R-CMD-check.yaml?label=R-CMD-check)](https://github.com/diogoribeiro7/unconfoundedr/actions/workflows/R-CMD-check.yaml) 
 [![pkgdown](https://img.shields.io/github/actions/workflow/status/diogoribeiro7/unconfoundedr/pkgdown.yaml?label=pkgdown)](https://github.com/diogoribeiro7/unconfoundedr/actions/workflows/pkgdown.yaml) 
-[![Codecov](https://codecov.io/gh/diogoribeiro7/unconfoundedr/branch/main/graph/badge.svg)](https://codecov.io/gh/diogoribeiro7/unconfoundedr)
+[![Codecov](https://codecov.io/gh/diogoribeiro7/unconfoundedr/branch/develop/graph/badge.svg)](https://codecov.io/gh/diogoribeiro7/unconfoundedr)
 [![CRAN status](https://www.r-pkg.org/badges/version/unconfoundedr)](https://CRAN.R-project.org/package=unconfoundedr)
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 
@@ -129,7 +129,7 @@ for (est in estimators) {
 }
 
 # Compare results
-print(batch_results)
+sapply(results, function(r) r$estimates$difference)
 export_to_csv(results, "comparison_results.csv")
 ```
 
@@ -271,7 +271,6 @@ w(x) = P(S=obs|X=x) / P(S=rct|X=x)
 We welcome contributions! Please see:
 - [Contributing Guidelines](.github/CONTRIBUTING.md)
 - [Code of Conduct](.github/CODE_OF_CONDUCT.md)
-- [Development Setup](.github/DEVELOPMENT.md)
 
 ### Development Workflow
 

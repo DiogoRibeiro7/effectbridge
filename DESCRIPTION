@@ -39,5 +39,6 @@ Suggests:
     rmarkdown
 VignetteBuilder: knitr
 Config/testthat/edition: 3
+Language: en
 LazyData: false
 ByteCompile: true

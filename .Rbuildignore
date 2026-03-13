@@ -20,3 +20,4 @@
 ^settings\.local\.json$
 ^.*\.Rproj$
 ^\.pytest_cache($|/)
+^\.lintr$

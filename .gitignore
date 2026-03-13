@@ -4,6 +4,7 @@
 check/
 inst/doc/
 vignettes/*.html
+Rplots.pdf
 
 # R session/user files
 .Rhistory

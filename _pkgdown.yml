@@ -44,17 +44,44 @@ navbar:
       href: https://diogoribeiro7.github.io/
 
 reference:
-  - title: "Main Functions"
-    desc: "Core testing functions of the package"
+  - title: "Core Testing"
+    desc: "Primary functions for unconfoundedness testing"
     contents:
       - unconfoundedness_test
-      - print.unconf_test
+      - batch_analysis
 
-  # NEW: catch-all so pkgdown doesn't fail when topics aren't listed above
-  - title: "All functions"
-    desc: "Complete index of exported functions"
+  - title: "Data Generation"
+    desc: "Simulate RCT and observational datasets"
     contents:
-      - everything
+      - generate_rct_data
+      - generate_obs_data
+
+  - title: "Power & Sample Size"
+    desc: "Power analysis and sample size calculations"
+    contents:
+      - simulate_power_analysis
+      - compute_required_sample_size
+
+  - title: "S3 Methods"
+    desc: "Print, summary, and plot methods for results"
+    contents:
+      - print.unconf_test
+      - summary.unconf_test
+      - plot.unconf_test
+      - print.batch_unconf_test
+
+  - title: "Reporting & Export"
+    desc: "Generate reports and export results"
+    contents:
+      - create_diagnostic_report
+      - create_latex_table
+      - export_to_csv
+
+  - title: "Utilities"
+    desc: "Helper functions for multiple comparisons and installation"
+    contents:
+      - adjust_p_values
+      - validate_installation
 
 home:
   title: "unconfoundedr"
