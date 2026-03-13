@@ -49,10 +49,13 @@ jobs:
 
       - name: Check code style
         run: |
-          issues <- styler::style_pkg(dry = "on")
-          if (length(issues) > 0) {
-            cat("Style issues found:\n"); print(issues)
+          out <- styler::style_pkg(dry = "on")
+          if (any(out$changed)) {
+            cat("Files with style issues:\n")
+            print(out[out$changed, ])
             quit(status = 1)
+          } else {
+            cat("All files pass style check.\n")
           }
         shell: Rscript {0}
 

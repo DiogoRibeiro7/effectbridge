@@ -1,16 +1,16 @@
-# unconfoundedr
+# effectbridge
 
 > **Test unconfoundedness by comparing treatment effects from RCT-like and observational datasets**
 
-[![R-CMD-check](https://img.shields.io/github/actions/workflow/status/diogoribeiro7/unconfoundedr/R-CMD-check.yaml?label=R-CMD-check)](https://github.com/diogoribeiro7/unconfoundedr/actions/workflows/R-CMD-check.yaml) 
-[![pkgdown](https://img.shields.io/github/actions/workflow/status/diogoribeiro7/unconfoundedr/pkgdown.yaml?label=pkgdown)](https://github.com/diogoribeiro7/unconfoundedr/actions/workflows/pkgdown.yaml) 
-[![Codecov](https://codecov.io/gh/diogoribeiro7/unconfoundedr/branch/main/graph/badge.svg)](https://codecov.io/gh/diogoribeiro7/unconfoundedr)
-[![CRAN status](https://www.r-pkg.org/badges/version/unconfoundedr)](https://CRAN.R-project.org/package=unconfoundedr)
+[![R-CMD-check](https://img.shields.io/github/actions/workflow/status/diogoribeiro7/effectbridge/R-CMD-check.yaml?label=R-CMD-check)](https://github.com/diogoribeiro7/effectbridge/actions/workflows/R-CMD-check.yaml) 
+[![pkgdown](https://img.shields.io/github/actions/workflow/status/diogoribeiro7/effectbridge/pkgdown.yaml?label=pkgdown)](https://github.com/diogoribeiro7/effectbridge/actions/workflows/pkgdown.yaml) 
+[![Codecov](https://codecov.io/gh/diogoribeiro7/effectbridge/branch/develop/graph/badge.svg)](https://codecov.io/gh/diogoribeiro7/effectbridge)
+[![CRAN status](https://www.r-pkg.org/badges/version/effectbridge)](https://CRAN.R-project.org/package=effectbridge)
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 
 ## Overview
 
-The `unconfoundedr` package provides a comprehensive toolkit for testing the **unconfoundedness assumption** (ignorability) by comparing marginal treatment effects estimated from an RCT-like dataset with those from an observational dataset. When these effects differ significantly, it suggests potential unmeasured confounding in the observational analysis.
+The `effectbridge` package provides a comprehensive toolkit for testing the **unconfoundedness assumption** (ignorability) by comparing marginal treatment effects estimated from an RCT-like dataset with those from an observational dataset. When these effects differ significantly, it suggests potential unmeasured confounding in the observational analysis.
 
 ### Why This Matters
 
@@ -66,20 +66,20 @@ Before trusting causal inferences from observational data, it's crucial to asses
 
 ```r
 # From GitHub (development version)
-devtools::install_github("DiogoRibeiro7/unconfoundedr")
+devtools::install_github("DiogoRibeiro7/effectbridge")
 
 # Optional dependencies for full functionality
 install.packages(c("tmle", "MatchIt", "energy", "parallel", "rmarkdown"))
 
 # Validate installation
-library(unconfoundedr)
+library(effectbridge)
 validate_installation()
 ```
 
 ## Quick Start
 
 ```r
-library(unconfoundedr)
+library(effectbridge)
 
 # Generate example data
 set.seed(42)
@@ -129,7 +129,7 @@ for (est in estimators) {
 }
 
 # Compare results
-print(batch_results)
+sapply(results, function(r) r$estimates$difference)
 export_to_csv(results, "comparison_results.csv")
 ```
 
@@ -271,7 +271,6 @@ w(x) = P(S=obs|X=x) / P(S=rct|X=x)
 We welcome contributions! Please see:
 - [Contributing Guidelines](.github/CONTRIBUTING.md)
 - [Code of Conduct](.github/CODE_OF_CONDUCT.md)
-- [Development Setup](.github/DEVELOPMENT.md)
 
 ### Development Workflow
 
@@ -295,12 +294,12 @@ pkgdown::build_site()
 If you use this package, please cite:
 
 ```bibtex
-@software{unconfoundedr2025,
-  title = {unconfoundedr: Test Unconfoundedness by Comparing RCT and Observational Effects},
+@software{effectbridge2025,
+  title = {effectbridge: Test Unconfoundedness by Comparing RCT and Observational Effects},
   author = {Diogo Ribeiro},
   year = {2025},
   version = {0.2.0},
-  url = {https://github.com/DiogoRibeiro7/unconfoundedr},
+  url = {https://github.com/DiogoRibeiro7/effectbridge},
 }
 ```
 
@@ -316,11 +315,12 @@ MIT License. See [LICENSE](LICENSE) for details.
 
 ## Support
 
-- 📖 **Documentation**: [https://diogoribeiro7.github.io/packages/unconfoundedr/](https://diogoribeiro7.github.io/packages/unconfoundedr/)
-- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/DiogoRibeiro7/unconfoundedr/issues)  
-- 💬 **Questions**: [GitHub Discussions](https://github.com/DiogoRibeiro7/unconfoundedr/discussions)
+- 📖 **Documentation**: [https://diogoribeiro7.github.io/packages/effectbridge/](https://diogoribeiro7.github.io/packages/effectbridge/)
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/DiogoRibeiro7/effectbridge/issues)  
+- 💬 **Questions**: [GitHub Discussions](https://github.com/DiogoRibeiro7/effectbridge/discussions)
 - 📧 **Email**: diogo.debastos.ribeiro@gmail.com
 
 ---
 
 *Built with ❤️ for robust causal inference*
+

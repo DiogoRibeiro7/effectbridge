@@ -7,6 +7,7 @@
 # * https://testthat.r-lib.org/articles/special-files.html
 
 library(testthat)
-library(unconfoundedr)
+library(effectbridge)
 
-test_check("unconfoundedr")
+test_check("effectbridge")
+

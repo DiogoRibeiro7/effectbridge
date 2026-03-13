@@ -37,7 +37,7 @@ unconfoundedness_test(
 
 \item{stabilize}{logical; stabilized IPW (default TRUE)}
 
-\item{trim}{length-2 numeric in \link{0,1} for weight trimming; NULL disables}
+\item{trim}{length-2 numeric in [0,1] for weight trimming; NULL disables}
 
 \item{family_y}{"gaussian" or "binomial"}
 
@@ -67,7 +67,7 @@ unconfoundedness_test(
 enhanced unconf_test object with comprehensive diagnostics
 }
 \description{
-Compare a marginal treatment effect ω in an RCT-like dataset with the same
+Compare a marginal treatment effect in an RCT-like dataset with the same
 estimand in an observational dataset. Enhanced version supports:
 \itemize{
 \item Estimators: IPW, AIPW, TMLE, G-computation, matching

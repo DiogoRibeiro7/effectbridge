@@ -14,7 +14,7 @@ body:
         
         Before submitting, please:
         - Search existing issues to avoid duplicates
-        - Use the latest version of unconfoundedr
+        - Use the latest version of effectbridge
         - Include a minimal reproducible example
 
   - type: textarea
@@ -35,7 +35,7 @@ body:
         ```r
         reprex::reprex({
           # Your code here
-          library(unconfoundedr)
+          library(effectbridge)
           # ... minimal example that demonstrates the bug
         })
         ```
@@ -80,7 +80,7 @@ body:
       options:
         - label: I have searched existing issues
           required: true
-        - label: I am using the latest version of unconfoundedr
+        - label: I am using the latest version of effectbridge
           required: true
         - label: I have included a reproducible example
           required: true

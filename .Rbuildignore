@@ -1,4 +1,5 @@
 ^renv$
+^renv($|/)
 ^renv\.lock$
 ^\.github$
 ^_pkgdown\.yml$
@@ -9,6 +10,14 @@
 ^LICENSE\.md$
 ^vignettes/.*\.html$
 ^blog-repo$
-^renv($|/)
-^renv\.lock$
 ^\..Rprofile$
+^CLAUDE\.md$
+^\.claude($|/)
+^\.vscode($|/)
+^\.idea($|/)
+^\.Renviron$
+^\.Renviron\.user$
+^settings\.local\.json$
+^.*\.Rproj$
+^\.pytest_cache($|/)
+^\.lintr$

@@ -1,0 +1,90 @@
+{
+  "project_owner": "DiogoRibeiro7",
+  "project_number": 4,
+  "tasks": [
+    {
+      "title": "chore: complete repository rename validation to effectbridge",
+      "description": "Ensure no stale references to the old repository/package identity remain.",
+      "status": "in_progress",
+      "priority": "high",
+      "labels": ["maintenance", "documentation"]
+    },
+    {
+      "title": "fix: prevent generated test artifacts from being committed",
+      "description": "Prevent generated artifacts (for example Rplots.pdf) from creating noisy diffs and accidental commits.",
+      "status": "planned",
+      "priority": "high",
+      "labels": ["bug", "testing"]
+    },
+    {
+      "title": "ci: enforce R CMD check --as-cran and fail on warnings",
+      "description": "Tighten CI quality gates for release readiness.",
+      "status": "planned",
+      "priority": "high",
+      "labels": ["ci", "quality"]
+    },
+    {
+      "title": "test: add edge-case tests for positivity and perfect separation",
+      "description": "Add focused tests for critical estimator failure modes.",
+      "status": "planned",
+      "priority": "medium",
+      "labels": ["testing", "estimators"]
+    },
+    {
+      "title": "test: validate bootstrap and analytical inference against simulation baselines",
+      "description": "Validate inference reliability empirically via simulation.",
+      "status": "planned",
+      "priority": "medium",
+      "labels": ["testing", "inference"]
+    },
+    {
+      "title": "refactor: standardize error and warning messages across modules",
+      "description": "Make diagnostics consistent across estimators and transport modules.",
+      "status": "planned",
+      "priority": "medium",
+      "labels": ["maintenance", "api"]
+    },
+    {
+      "title": "docs: expand quick-start examples for common workflows",
+      "description": "Expand docs for high-frequency workflows.",
+      "status": "planned",
+      "priority": "medium",
+      "labels": ["documentation", "examples"]
+    },
+    {
+      "title": "perf: profile bootstrap pipeline and remove avoidable repeated work",
+      "description": "Improve runtime where bootstrap dominates cost.",
+      "status": "planned",
+      "priority": "medium",
+      "labels": ["performance", "inference"]
+    },
+    {
+      "title": "feat: add subgroup effect comparison workflow",
+      "description": "Add subgroup-level effect comparison support.",
+      "status": "planned",
+      "priority": "medium",
+      "labels": ["enhancement", "estimators"]
+    },
+    {
+      "title": "chore: create CRAN readiness checklist and release runbook",
+      "description": "Create repeatable release guidance.",
+      "status": "planned",
+      "priority": "high",
+      "labels": ["release", "documentation"]
+    },
+    {
+      "title": "meta: 0.3.0 release tracker",
+      "description": "Central tracker for 0.3.0 milestone.",
+      "status": "planned",
+      "priority": "high",
+      "labels": ["release", "tracking", "meta"]
+    },
+    {
+      "title": "meta: testing quality dashboard",
+      "description": "Track testing health over time.",
+      "status": "planned",
+      "priority": "medium",
+      "labels": ["testing", "tracking", "meta"]
+    }
+  ]
+}

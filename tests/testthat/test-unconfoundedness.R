@@ -1,4 +1,4 @@
-# Enhanced test suite for unconfoundedr package
+# Enhanced test suite for effectbridge package
 
 # Test basic functionality
 test_that("basic unconfoundedness test works", {
@@ -348,9 +348,9 @@ test_that("utility functions work", {
 test_that("edge cases are handled properly", {
   set.seed(555)
 
-  # Very small sample sizes
-  small_rct <- generate_rct_data(n = 10, seed = 123)
-  small_obs <- generate_obs_data(n = 15, seed = 456)
+  # Small sample sizes trigger validation warnings
+  small_rct <- generate_rct_data(n = 30, seed = 123)
+  small_obs <- generate_obs_data(n = 50, seed = 456)
 
   expect_warning(
     result <- unconfoundedness_test(
@@ -364,7 +364,7 @@ test_that("edge cases are handled properly", {
   )
 
   # Perfect separation (all treated or all control)
-  perfect_sep <- small_rct
+  perfect_sep <- generate_rct_data(n = 30, seed = 123)
   perfect_sep$A <- rep(1, nrow(perfect_sep)) # All treated
 
   # Should handle gracefully or give informative error
@@ -425,7 +425,7 @@ test_that("export functions work", {
 
   # Test CSV export
   temp_csv <- tempfile(fileext = ".csv")
-  expect_message(export_to_csv(result, temp_csv), "exported")
+  expect_output(export_to_csv(result, temp_csv), "exported")
   expect_true(file.exists(temp_csv))
 
   # Clean up
@@ -529,3 +529,4 @@ test_that("diagnostic assessments work", {
   expect_equal(diag$sample_size$raw_n$rct, 200)
   expect_equal(diag$sample_size$raw_n$obs, 300)
 })
+

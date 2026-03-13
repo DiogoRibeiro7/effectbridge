@@ -1,16 +1,38 @@
-inst/doc
-.Rproj.user
-.httr-oauth
-.DS_Store
-.quarto
-
-# pkgdown output (built by CI)
-docs/
-pkgdown/
+# R package build/check artifacts
+*.Rcheck/
+*.tar.gz
+check/
 inst/doc/
+vignettes/*.html
+Rplots.pdf
 
-# R build junk
-.DS_Store
-.Rproj.user/
+# R session/user files
 .Rhistory
 .RData
+.Ruserdata
+.Rproj.user/
+.Rproj
+
+# Dependency manager local libraries
+renv/library/
+renv/python/
+
+# Documentation/build tooling artifacts
+.quarto/
+pkgdown/
+docs/
+
+# Local credentials/config
+.httr-oauth
+settings.local.json
+.Renviron
+.Renviron.user
+
+# Tooling caches
+.pytest_cache/
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db

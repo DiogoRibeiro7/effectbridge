@@ -1,6 +1,6 @@
 # .github/workflows/pkgdown.yaml
 # Build pkgdown site for this package and publish it into your blog repo at:
-#   https://diogoribeiro7.github.io/packages/unconfoundedr/
+#   https://diogoribeiro7.github.io/packages/effectbridge/
 # Requires a PAT with "repo" scope stored as PERSONAL_ACCESS_TOKEN in *this* repo.
 
 name: pkgdown
@@ -25,7 +25,7 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       BLOG_REPO: DiogoRibeiro7/DiogoRibeiro7.github.io
-      BLOG_DEST: packages/unconfoundedr
+      BLOG_DEST: packages/effectbridge
 
     steps:
       - name: Checkout package repository
@@ -91,6 +91,6 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Update unconfoundedr pkgdown documentation"
+            git commit -m "Update effectbridge pkgdown documentation"
             git push
           fi
