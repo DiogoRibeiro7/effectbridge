@@ -155,11 +155,11 @@ jobs:
           cat("📚 Checking documentation coverage...\n")
           devtools::load_all(quiet = TRUE)
 
-          exports <- getNamespaceExports("unconfoundedr")
+          exports <- getNamespaceExports("effectbridge")
           documented <- character(0)
 
           for (fn in exports) {
-            hf <- utils::help(fn, package = "unconfoundedr")
+            hf <- utils::help(fn, package = "effectbridge")
             if (length(hf) > 0) documented <- c(documented, fn)
           }
 

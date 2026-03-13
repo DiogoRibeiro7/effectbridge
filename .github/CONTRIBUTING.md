@@ -1,11 +1,11 @@
-# Contributing to unconfoundedr
+# Contributing to effectbridge
 
 Thank you for your interest in contributing! 🎉
 
 ## Quick Start
 
 1. **Fork** the repository
-2. **Clone** your fork: `git clone https://github.com/yourusername/unconfoundedr.git`
+2. **Clone** your fork: `git clone https://github.com/yourusername/effectbridge.git`
 3. **Create** a branch: `git checkout -b feature-name`
 4. **Make** your changes
 5. **Test**: `devtools::test()`
@@ -125,8 +125,8 @@ Example: `feat: add TMLE estimator support`
 
 ## Questions?
 
-- 💬 [GitHub Discussions](https://github.com/DiogoRibeiro7/unconfoundedr/discussions)
+- 💬 [GitHub Discussions](https://github.com/DiogoRibeiro7/effectbridge/discussions)
 - 📧 Email: <diogo.debastos.ribeiro@gmail.com>
-- 📖 Check the [documentation](https://diogoribeiro7.github.io/packages/unconfoundedr/)
+- 📖 Check the [documentation](https://diogoribeiro7.github.io/packages/effectbridge/)
 
 We appreciate all contributions, large and small! 🙏

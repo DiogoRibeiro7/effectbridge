@@ -168,16 +168,16 @@ jobs:
           VERSION="${{ needs.validate.outputs.version }}"
           
           # Extract release notes from NEWS.md
-          if grep -q "^# unconfoundedr $VERSION" NEWS.md; then
+          if grep -q "^# effectbridge $VERSION" NEWS.md; then
             # Extract content between this version and the next
-            awk "/^# unconfoundedr $VERSION/,/^# unconfoundedr [0-9]/" NEWS.md | \
+            awk "/^# effectbridge $VERSION/,/^# effectbridge [0-9]/" NEWS.md | \
               head -n -1 | tail -n +2 > release_notes.md
           else
             # Fallback release notes
             cat > release_notes.md << EOF
-          ## unconfoundedr $VERSION
+          ## effectbridge $VERSION
           
-          New release of unconfoundedr with enhanced functionality.
+          New release of effectbridge with enhanced functionality.
           
           ### What's New
           - Multiple estimators (IPW, AIPW, TMLE, G-computation, Matching)
@@ -189,10 +189,10 @@ jobs:
           
           \`\`\`r
           # From GitHub
-          devtools::install_github("DiogoRibeiro7/unconfoundedr@v$VERSION")
+          devtools::install_github("DiogoRibeiro7/effectbridge@v$VERSION")
           \`\`\`
           
-          See the [documentation](https://diogoribeiro7.github.io/packages/unconfoundedr/) for full details.
+          See the [documentation](https://diogoribeiro7.github.io/packages/effectbridge/) for full details.
           EOF
           fi
           
@@ -203,14 +203,14 @@ jobs:
           
           ## 📦 Package Files
           
-          - **Source package**: \`unconfoundedr_$VERSION.tar.gz\` (all platforms)
-          - **Windows binary**: \`unconfoundedr_$VERSION.zip\` (Windows users)
-          - **macOS binary**: \`unconfoundedr_$VERSION.tgz\` (macOS users)
+          - **Source package**: \`effectbridge_$VERSION.tar.gz\` (all platforms)
+          - **Windows binary**: \`effectbridge_$VERSION.zip\` (Windows users)
+          - **macOS binary**: \`effectbridge_$VERSION.tgz\` (macOS users)
           
           ## 🚀 Quick Start
           
           \`\`\`r
-          library(unconfoundedr)
+          library(effectbridge)
           
           # Generate example data
           rct_data <- generate_rct_data(n = 500)
@@ -231,9 +231,9 @@ jobs:
           
           ## 📚 Documentation
           
-          - [Getting Started Guide](https://diogoribeiro7.github.io/packages/unconfoundedr/articles/getting-started.html)
-          - [Function Reference](https://diogoribeiro7.github.io/packages/unconfoundedr/reference/)
-          - [GitHub Repository](https://github.com/DiogoRibeiro7/unconfoundedr)
+          - [Getting Started Guide](https://diogoribeiro7.github.io/packages/effectbridge/articles/getting-started.html)
+          - [Function Reference](https://diogoribeiro7.github.io/packages/effectbridge/reference/)
+          - [GitHub Repository](https://github.com/DiogoRibeiro7/effectbridge)
           EOF
           
           echo "Generated release notes:"
@@ -256,7 +256,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.validate.outputs.version }}
-          name: unconfoundedr ${{ needs.validate.outputs.version }}
+          name: effectbridge ${{ needs.validate.outputs.version }}
           body_path: release_notes.md
           prerelease: ${{ needs.validate.outputs.is_prerelease }}
           files: release-assets/*
@@ -306,7 +306,7 @@ jobs:
         run: |
           echo "📦 Package is ready for CRAN submission!"
           echo "Manual steps required:"
-          echo "1. Download the source package: unconfoundedr_${{ needs.validate.outputs.version }}.tar.gz"
+          echo "1. Download the source package: effectbridge_${{ needs.validate.outputs.version }}.tar.gz"
           echo "2. Submit to CRAN: https://cran.r-project.org/submit.html"
           echo "3. Monitor CRAN check results"
           
@@ -346,7 +346,7 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "🏷️ **Version**: ${{ needs.validate.outputs.version }}" >> $GITHUB_STEP_SUMMARY
             echo "🔗 **Release**: [View on GitHub](https://github.com/${{ github.repository }}/releases/tag/v${{ needs.validate.outputs.version }})" >> $GITHUB_STEP_SUMMARY
-            echo "📚 **Documentation**: [View docs](https://diogoribeiro7.github.io/packages/unconfoundedr/)" >> $GITHUB_STEP_SUMMARY
+            echo "📚 **Documentation**: [View docs](https://diogoribeiro7.github.io/packages/effectbridge/)" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
             echo "- [ ] Test installation from GitHub" >> $GITHUB_STEP_SUMMARY
@@ -363,5 +363,5 @@ jobs:
     #     if: success() && secrets.SLACK_WEBHOOK_URL
     #     run: |
     #       curl -X POST -H 'Content-type: application/json' \
-    #         --data '{"text":"🚀 unconfoundedr v${{ needs.validate.outputs.version }} has been released! https://github.com/${{ github.repository }}/releases/tag/v${{ needs.validate.outputs.version }}"}' \
+    #         --data '{"text":"🚀 effectbridge v${{ needs.validate.outputs.version }} has been released! https://github.com/${{ github.repository }}/releases/tag/v${{ needs.validate.outputs.version }}"}' \
     #         ${{ secrets.SLACK_WEBHOOK_URL }}
