@@ -74,8 +74,7 @@ estimate_single_effect <- function(
   stabilize,
   trim
 ) {
-  switch(
-    estimator,
+  switch(estimator,
     "ipw" = estimate_ipw(
       Y,
       A,
@@ -525,9 +524,9 @@ estimate_matching <- function(Y, A, X, weights, effect_measure, family_y) {
 #' @param treat character(1) name of the treatment variable (default "A")
 #' @return character() vector of covariate names present in `data`
 #' @examples
-#' df <- data.frame(Y=0, A=0, X1=1, X2=2, X3=3)
-#' extract_covariates(Y ~ A + X1 + X2, df)          # c("X1","X2")
-#' extract_covariates(Y ~ A + log(X1) + X2:X3, df)  # c("X1","X2","X3")
+#' df <- data.frame(Y = 0, A = 0, X1 = 1, X2 = 2, X3 = 3)
+#' extract_covariates(Y ~ A + X1 + X2, df) # c("X1","X2")
+#' extract_covariates(Y ~ A + log(X1) + X2:X3, df) # c("X1","X2","X3")
 #'
 #' @keywords internal
 extract_covariates <- function(formula, data, treat = "A") {
@@ -566,8 +565,8 @@ extract_covariates <- function(formula, data, treat = "A") {
 #'   A valid formula object for use in \code{glm()}.
 #'
 #' @examples
-#' build_ps_formula(c("X1","X2"))  # A ~ X1 + X2
-#' build_ps_formula(character(0))  # A ~ 1 (with warning)
+#' build_ps_formula(c("X1", "X2")) # A ~ X1 + X2
+#' build_ps_formula(character(0)) # A ~ 1 (with warning)
 #'
 #' @keywords internal
 build_ps_formula <- function(predictors) {
@@ -871,8 +870,7 @@ apply_weight_trimming <- function(weights, trim) {
 #' @param effect_measure Effect measure
 #' @return Effect estimate
 compute_effect_measure <- function(mu1, mu0, effect_measure) {
-  switch(
-    effect_measure,
+  switch(effect_measure,
     "rd" = mu1 - mu0, # Risk difference
     "rr" = {
       # Risk ratio
@@ -961,8 +959,7 @@ compute_ipw_influence_function <- function(
   if0 <- w0 * (Y - mu0) / sum_w0
 
   # Influence function for effect measure
-  switch(
-    effect_measure,
+  switch(effect_measure,
     "rd" = if1 - if0,
     "rr" = {
       if (mu0 != 0) {
@@ -1007,8 +1004,7 @@ compute_aipw_influence_function <- function(
   if0 <- W * (pseudo_outcomes$mu0 - mu0)
 
   # Influence function for effect measure
-  switch(
-    effect_measure,
+  switch(effect_measure,
     "rd" = if1 - if0,
     "rr" = {
       if (mu0 != 0) {

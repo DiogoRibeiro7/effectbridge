@@ -529,4 +529,3 @@ test_that("diagnostic assessments work", {
   expect_equal(diag$sample_size$raw_n$rct, 200)
   expect_equal(diag$sample_size$raw_n$obs, 300)
 })
-

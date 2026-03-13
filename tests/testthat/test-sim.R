@@ -70,7 +70,6 @@ test_that("covariate_shift changes the covariate distribution", {
 })
 
 test_that("confounding_strength = 0 produces near-random treatment", {
-
   o <- generate_obs_data(n = 1000, confounding_strength = 0, seed = 70)
   # With no confounding, treatment prevalence should be near baseline
   expect_true(abs(mean(o$A) - 0.38) < 0.1) # logistic(-0.5) ~ 0.38

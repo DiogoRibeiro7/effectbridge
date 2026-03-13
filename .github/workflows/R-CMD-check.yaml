@@ -3,6 +3,8 @@ name: R-CMD-check
 on:
   push:
     branches: [main, develop, release/*]
+    tags:
+      - "v*"
     paths-ignore:
       - 'README.md'
       - 'NEWS.md'
@@ -44,6 +46,7 @@ jobs:
           extra-packages: |
             any::styler
             any::lintr
+            any::cyclocomp
             any::devtools
           needs: lint
 
@@ -73,12 +76,11 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - {os: macos-latest,   r: 'release',  artifact-name: 'macOS'}
-          - {os: windows-latest, r: 'release',  artifact-name: 'Windows'}
-          - {os: ubuntu-latest,  r: 'devel',    artifact-name: 'Linux-devel',   http-user-agent: 'release'}
-          - {os: ubuntu-latest,  r: 'release',  artifact-name: 'Linux-release'}
-          - {os: ubuntu-latest,  r: 'oldrel-1', artifact-name: 'Linux-oldrel'}
-          - {os: ubuntu-latest,  r: '4.1.0',    artifact-name: 'Linux-minimal'}
+          - {os: ubuntu-latest,  r: 'devel',    artifact-name: 'Linux-devel',   http-user-agent: 'release', release_only: false}
+          - {os: ubuntu-latest,  r: 'release',  artifact-name: 'Linux-release', release_only: false}
+          - {os: macos-latest,   r: 'release',  artifact-name: 'macOS',         release_only: true}
+          - {os: windows-latest, r: 'release',  artifact-name: 'Windows',       release_only: true}
+    if: ${{ !matrix.config.release_only || startsWith(github.ref, 'refs/tags/v') }}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -129,7 +131,7 @@ jobs:
           rcmdcheck::rcmdcheck(
             args = c("--no-manual", "--as-cran", "--no-build-vignettes"),
             build_args = c("--no-build-vignettes"),
-            error_on = "warning",
+            error_on = "error",
             check_dir = "check"
           )
         shell: Rscript {0}

@@ -7,6 +7,8 @@
 #' @param outcome_type "continuous" or "binary"
 #' @param seed Random seed
 #' @return Simulated RCT data frame
+#' @seealso [generate_obs_data()] for observational data,
+#'   [unconfoundedness_test()] for using the generated data.
 #' @export
 #' @examples
 #' \dontrun{
@@ -60,11 +62,15 @@ generate_rct_data <- function(
 #' @param outcome_type "continuous" or "binary"
 #' @param seed Random seed
 #' @return Simulated observational data frame
+#' @seealso [generate_rct_data()] for RCT data,
+#'   [unconfoundedness_test()] for using the generated data.
 #' @export
 #' @examples
 #' \dontrun{
-#' obs_data <- generate_obs_data(n = 1000, confounding_strength = 0.5,
-#'                               covariate_shift = TRUE)
+#' obs_data <- generate_obs_data(
+#'   n = 1000, confounding_strength = 0.5,
+#'   covariate_shift = TRUE
+#' )
 #' head(obs_data)
 #' }
 generate_obs_data <- function(
@@ -131,6 +137,8 @@ generate_obs_data <- function(
 #' @param alpha Significance level
 #' @param seed Random seed
 #' @return Power analysis results
+#' @seealso [compute_required_sample_size()] for analytic sample-size
+#'   calculation, [unconfoundedness_test()] for the underlying test.
 #' @export
 #' @examples
 #' \dontrun{
@@ -257,6 +265,8 @@ simulate_power_analysis <- function(
 #' @param p_values Vector of p-values
 #' @param method Correction method
 #' @return Adjusted p-values
+#' @seealso [batch_analysis()] for running multiple analyses that may need
+#'   p-value adjustment, [stats::p.adjust()] for the underlying method.
 #' @export
 adjust_p_values <- function(
   p_values,
@@ -272,6 +282,7 @@ adjust_p_values <- function(
 #' @param effect_size Expected effect size difference
 #' @param ratio_obs_to_rct Ratio of observational to RCT sample size
 #' @return Required sample sizes
+#' @seealso [simulate_power_analysis()] for simulation-based power analysis.
 #' @export
 #' @examples
 #' \dontrun{
@@ -316,6 +327,8 @@ compute_required_sample_size <- function(
 #' @param file Output file path (NULL for console output)
 #' @param caption Table caption
 #' @return LaTeX table code
+#' @seealso [export_to_csv()] for CSV export,
+#'   [create_diagnostic_report()] for full HTML/PDF reports.
 #' @export
 create_latex_table <- function(
   x,
@@ -440,6 +453,8 @@ format_p_value_latex <- function(p) {
 #' @param x unconf_test object or list of results
 #' @param file Output CSV file path
 #' @return Invisibly returns the data frame
+#' @seealso [create_latex_table()] for LaTeX export,
+#'   [create_diagnostic_report()] for full HTML/PDF reports.
 #' @export
 export_to_csv <- function(x, file) {
   if (inherits(x, "unconf_test")) {
@@ -473,6 +488,8 @@ export_to_csv <- function(x, file) {
 #' @param file Output file path (HTML or PDF)
 #' @param format Output format ("html" or "pdf")
 #' @return File path of created report
+#' @seealso [create_latex_table()] for LaTeX export,
+#'   [export_to_csv()] for CSV export.
 #' @export
 create_diagnostic_report <- function(
   x,
@@ -616,6 +633,8 @@ create_rmd_content <- function(x) {
 #' @param estimator Estimator to use
 #' @param ... Additional arguments passed to unconfoundedness_test
 #' @return List of results
+#' @seealso [unconfoundedness_test()] for single analyses,
+#'   [adjust_p_values()] for multiple-comparison correction.
 #' @export
 batch_analysis <- function(
   rct_data_list,
@@ -661,6 +680,7 @@ batch_analysis <- function(
 #' Print method for batch results
 #' @param x batch_unconf_test object
 #' @param ... Additional arguments
+#' @seealso [batch_analysis()] for creating batch results.
 #' @export
 print.batch_unconf_test <- function(x, ...) {
   cat("# Batch Unconfoundedness Test Results\n")
@@ -714,6 +734,7 @@ print.batch_unconf_test <- function(x, ...) {
 
 #' Validate package installation and dependencies
 #' @return Logical indicating if all dependencies are available
+#' @seealso [unconfoundedness_test()] for the main analysis function.
 #' @export
 validate_installation <- function() {
   cat("Validating effectbridge installation...\n\n")
@@ -740,8 +761,7 @@ validate_installation <- function() {
   cat("\nOptional dependencies:\n")
   for (i in seq_along(optional_deps)) {
     status <- if (optional_available[i]) "✓" else "✗"
-    functionality <- switch(
-      optional_deps[i],
+    functionality <- switch(optional_deps[i],
       "tmle" = "(for TMLE estimator)",
       "MatchIt" = "(for matching estimator)",
       "energy" = "(for multivariate shift detection)",
@@ -776,4 +796,3 @@ validate_installation <- function() {
 
 # Additional utility operators and functions
 `%||%` <- function(a, b) if (is.null(a)) b else a
-
