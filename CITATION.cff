@@ -1,8 +1,8 @@
-# citation.cff for the unconfoundedr package
+# citation.cff for the effectbridge package
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 type: software
-title: "unconfoundedr: Test Unconfoundedness by Comparing RCT and Observational Effects"
+title: "effectbridge: Test Unconfoundedness by Comparing RCT and Observational Effects"
 abstract: >
   R package to test (un)confoundedness by comparing a marginal treatment effect
   estimated in an RCT-like dataset with the same estimand from an observational
@@ -18,8 +18,8 @@ authors:
 version: "0.2.0"
 date-released: "2025-08-29"
 license: MIT
-repository-code: "https://github.com/DiogoRibeiro7/unconfoundedr"
-url: "https://diogoribeiro7.github.io/packages/unconfoundedr/"
+repository-code: "https://github.com/DiogoRibeiro7/effectbridge"
+url: "https://diogoribeiro7.github.io/packages/effectbridge/"
 keywords:
   - causal inference
   - unconfoundedness
@@ -33,12 +33,13 @@ keywords:
 
 preferred-citation:
   type: software
-  title: "unconfoundedr: Test Unconfoundedness by Comparing RCT and Observational Effects"
+  title: "effectbridge: Test Unconfoundedness by Comparing RCT and Observational Effects"
   authors:
     - family-names: Ribeiro
       given-names: Diogo
       orcid: "https://orcid.org/0009-0001-2022-7072"
   year: 2025
   version: "0.2.0"
-  url: "https://diogoribeiro7.github.io/packages/unconfoundedr/"
-  repository-code: "https://github.com/DiogoRibeiro7/unconfoundedr"
+  url: "https://diogoribeiro7.github.io/packages/effectbridge/"
+  repository-code: "https://github.com/DiogoRibeiro7/effectbridge"
+

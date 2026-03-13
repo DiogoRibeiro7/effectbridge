@@ -1,6 +1,6 @@
-# _pkgdown.yml — unconfoundedr
+# _pkgdown.yml — effectbridge
 # This URL must match the final location on your blog.
-url: https://diogoribeiro7.github.io/packages/unconfoundedr/
+url: https://diogoribeiro7.github.io/packages/effectbridge/
 
 template:
   bootstrap: 5
@@ -38,7 +38,7 @@ navbar:
       href: news/index.html
     github:
       text: GitHub
-      href: https://github.com/DiogoRibeiro7/unconfoundedr
+      href: https://github.com/DiogoRibeiro7/effectbridge
     blog:
       text: "← Back to Blog"
       href: https://diogoribeiro7.github.io/
@@ -84,7 +84,7 @@ reference:
       - validate_installation
 
 home:
-  title: "unconfoundedr"
+  title: "effectbridge"
   description: >-
     Test (un)confoundedness by comparing an effect from an RCT-like dataset
     to the same estimand from an observational dataset. Supports IPW/AIPW,
@@ -100,7 +100,7 @@ home:
         title: Community
         text: >
           Questions or issues? Open one on
-          [GitHub](https://github.com/DiogoRibeiro7/unconfoundedr/issues).
+          [GitHub](https://github.com/DiogoRibeiro7/effectbridge/issues).
       blog_link:
         title: "Data Science Blog"
         text: >
@@ -108,4 +108,5 @@ home:
           machine learning, and R.
 
 destination: docs
+
 

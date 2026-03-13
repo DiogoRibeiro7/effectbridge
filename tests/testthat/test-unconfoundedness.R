@@ -1,4 +1,4 @@
-# Enhanced test suite for unconfoundedr package
+# Enhanced test suite for effectbridge package
 
 # Test basic functionality
 test_that("basic unconfoundedness test works", {
@@ -529,3 +529,4 @@ test_that("diagnostic assessments work", {
   expect_equal(diag$sample_size$raw_n$rct, 200)
   expect_equal(diag$sample_size$raw_n$obs, 300)
 })
+

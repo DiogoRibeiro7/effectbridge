@@ -1,4 +1,4 @@
-Package: unconfoundedr
+Package: effectbridge
 Title: Test Unconfoundedness by Comparing RCT and Observational Effects
 Version: 0.2.0.9000
 Authors@R: 
@@ -14,8 +14,8 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
-URL: https://diogoribeiro7.github.io/packages/unconfoundedr/, https://github.com/DiogoRibeiro7/unconfoundedr
-BugReports: https://github.com/DiogoRibeiro7/unconfoundedr/issues
+URL: https://diogoribeiro7.github.io/packages/effectbridge/, https://github.com/DiogoRibeiro7/effectbridge
+BugReports: https://github.com/DiogoRibeiro7/effectbridge/issues
 Depends: 
     R (>= 4.1.0)
 Imports:
@@ -42,3 +42,4 @@ Config/testthat/edition: 3
 Language: en
 LazyData: false
 ByteCompile: true
+

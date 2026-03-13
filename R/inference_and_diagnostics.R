@@ -938,7 +938,7 @@ bootstrap_inference <- function(
     on.exit(parallel::stopCluster(cl))
 
     # Export package functions and data to workers
-    pkg_ns <- asNamespace("unconfoundedr")
+    pkg_ns <- asNamespace("effectbridge")
     parallel::clusterExport(
       cl,
       c("parsed_data", "estimator", "effect_measure",
@@ -1080,3 +1080,4 @@ single_bootstrap_replicate <- function(
   # Return difference
   compute_effect_difference(rct_effect_b, obs_effect_b, effect_measure)
 }
+

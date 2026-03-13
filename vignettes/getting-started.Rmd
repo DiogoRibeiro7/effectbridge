@@ -1,5 +1,5 @@
 ---
-title: Getting Started with unconfoundedr
+title: Getting Started with effectbridge
 author: Diogo Ribeiro
 date: '`r Sys.Date()`'
 output:
@@ -7,7 +7,7 @@ output:
     toc: true
     toc_depth: 3
 vignette: >-
-  %\VignetteIndexEntry{Getting Started with unconfoundedr}
+  %\VignetteIndexEntry{Getting Started with effectbridge}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -25,7 +25,7 @@ knitr::opts_chunk$set(
 
 # Introduction
 
-The `unconfoundedr` package provides tools for testing the **unconfoundedness assumption** in observational causal inference by comparing treatment effect estimates from RCT-like and observational datasets. This vignette demonstrates the main functionality through practical examples.
+The `effectbridge` package provides tools for testing the **unconfoundedness assumption** in observational causal inference by comparing treatment effect estimates from RCT-like and observational datasets. This vignette demonstrates the main functionality through practical examples.
 
 ## Why Test Unconfoundedness?
 
@@ -34,7 +34,7 @@ When making causal inferences from observational data, we assume that all confou
 **Key Insight**: If we have access to both experimental (RCT) and observational data on the same treatment-outcome relationship, we can compare their estimates. Large differences may indicate unmeasured confounding in the observational analysis.
 
 ```{r setup}
-library(unconfoundedr)
+library(effectbridge)
 set.seed(42)
 ```
 
@@ -435,7 +435,7 @@ cat("Should be > 0.05 for correct type I error control\n")
 
 # Conclusion
 
-The `unconfoundedr` package provides a comprehensive toolkit for assessing the credibility of observational causal inferences. Key takeaways:
+The `effectbridge` package provides a comprehensive toolkit for assessing the credibility of observational causal inferences. Key takeaways:
 
 1. **Always check transportability** - populations may differ between studies
 2. **Use multiple estimators** - cross-validate your findings
@@ -453,4 +453,5 @@ For more advanced features and detailed methodology, see the package documentati
 
 ---
 
-_This vignette demonstrates the main functionality of unconfoundedr. For questions or issues, please visit our [GitHub repository](https://github.com/DiogoRibeiro7/unconfoundedr)._
+_This vignette demonstrates the main functionality of effectbridge. For questions or issues, please visit our [GitHub repository](https://github.com/DiogoRibeiro7/effectbridge)._
+

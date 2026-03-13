@@ -1,4 +1,4 @@
-# unconfoundedr 0.2.1 (development)
+# effectbridge 0.2.1 (development)
 
 ## Improvements
 
@@ -53,7 +53,7 @@
 - Removed broken `DEVELOPMENT.md` link from README (content already in
   CONTRIBUTING.md).
 
-# unconfoundedr 0.2.0
+# effectbridge 0.2.0
 
 ## Fixes
 
@@ -80,7 +80,7 @@
 - More robust handling of empty or misspecified formulas in test cases.
 - Internal helpers are now keyworded as `internal` to clarify user-facing API.
 
-# unconfoundedr 0.1.0
+# effectbridge 0.1.0
 
 - Initial CRAN-style release.
 - Core function `unconfoundedness_test()` implemented with support for:
@@ -90,3 +90,4 @@
   - Inference methods: bootstrap, analytical, and robust SE.
   - Optional transport weighting with auto-detection (KS, energy tests).
   - Basic diagnostics and sensitivity analysis.
+
