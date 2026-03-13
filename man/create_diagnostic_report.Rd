@@ -23,3 +23,7 @@ File path of created report
 \description{
 Create diagnostic report
 }
+\seealso{
+\code{\link[=create_latex_table]{create_latex_table()}} for LaTeX export,
+\code{\link[=export_to_csv]{export_to_csv()}} for CSV export.
+}

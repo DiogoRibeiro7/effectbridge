@@ -17,3 +17,7 @@ Invisibly returns the data frame
 \description{
 Export results to CSV
 }
+\seealso{
+\code{\link[=create_latex_table]{create_latex_table()}} for LaTeX export,
+\code{\link[=create_diagnostic_report]{create_diagnostic_report()}} for full HTML/PDF reports.
+}

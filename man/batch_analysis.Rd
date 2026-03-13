@@ -23,3 +23,7 @@ List of results
 \description{
 Batch analysis for multiple datasets
 }
+\seealso{
+\code{\link[=unconfoundedness_test]{unconfoundedness_test()}} for single analyses,
+\code{\link[=adjust_p_values]{adjust_p_values()}} for multiple-comparison correction.
+}

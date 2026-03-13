@@ -14,3 +14,6 @@
 \description{
 Print method for batch results
 }
+\seealso{
+\code{\link[=batch_analysis]{batch_analysis()}} for creating batch results.
+}

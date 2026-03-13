@@ -35,3 +35,7 @@ rct_data <- generate_rct_data(n = 500, treatment_effect = 1.0)
 head(rct_data)
 }
 }
+\seealso{
+\code{\link[=generate_obs_data]{generate_obs_data()}} for observational data,
+\code{\link[=unconfoundedness_test]{unconfoundedness_test()}} for using the generated data.
+}

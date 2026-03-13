@@ -19,3 +19,7 @@ Invisibly returns \code{x}
 \description{
 Enhanced print method for unconf_test objects
 }
+\seealso{
+\code{\link[=summary.unconf_test]{summary.unconf_test()}}, \code{\link[=plot.unconf_test]{plot.unconf_test()}},
+\code{\link[=unconfoundedness_test]{unconfoundedness_test()}} for creating the object.
+}

@@ -21,3 +21,5 @@
 ^.*\.Rproj$
 ^\.pytest_cache($|/)
 ^\.lintr$
+^\.codecov\.yml$
+^cran-comments\.md$

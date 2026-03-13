@@ -5,9 +5,10 @@
 #' @param digits Number of digits to display
 #' @param ... Additional arguments (unused)
 #' @return Invisibly returns `x`
+#' @seealso [summary.unconf_test()], [plot.unconf_test()],
+#'   [unconfoundedness_test()] for creating the object.
 #' @export
 print.unconf_test <- function(x, digits = 4, ...) {
-
   cat("# Unconfoundedness Test Results\n")
   cat(strrep("=", 50), "\n\n")
 
@@ -17,8 +18,10 @@ print.unconf_test <- function(x, digits = 4, ...) {
   cat(sprintf("- Effect measure: %s\n", x$methods$effect_measure))
   cat(sprintf("- Outcome family: %s\n", x$methods$outcome_family))
   cat(sprintf("- Inference: %s\n", x$methods$inference_method))
-  cat(sprintf("- Transport: %s (applied: %s)\n",
-              x$methods$transport_method, x$methods$transport_applied))
+  cat(sprintf(
+    "- Transport: %s (applied: %s)\n",
+    x$methods$transport_method, x$methods$transport_applied
+  ))
   cat("\n")
 
   # Main results
@@ -26,9 +29,11 @@ print.unconf_test <- function(x, digits = 4, ...) {
   cat(sprintf("- RCT effect:          %.*f\n", digits, x$estimates$rct))
   cat(sprintf("- Observational effect: %.*f\n", digits, x$estimates$observational))
   cat(sprintf("- Difference:          %.*f\n", digits, x$estimates$difference))
-  cat(sprintf("- 95%% CI for difference: [%.*f, %.*f]\n",
-              digits, x$inference$confidence_interval[1],
-              digits, x$inference$confidence_interval[2]))
+  cat(sprintf(
+    "- 95%% CI for difference: [%.*f, %.*f]\n",
+    digits, x$inference$confidence_interval[1],
+    digits, x$inference$confidence_interval[2]
+  ))
   cat(sprintf("- Test statistic:      %.*f\n", digits, x$inference$test_statistic))
   cat(sprintf("- P-value:             %.*g\n", digits, x$inference$p_value))
   cat("\n")
@@ -51,15 +56,19 @@ print.unconf_test <- function(x, digits = 4, ...) {
   }
 
   # Sample sizes
-  cat(sprintf("- Sample sizes: RCT=%d, Obs=%d\n",
-              x$diagnostics$sample_size$raw_n$rct,
-              x$diagnostics$sample_size$raw_n$obs))
+  cat(sprintf(
+    "- Sample sizes: RCT=%d, Obs=%d\n",
+    x$diagnostics$sample_size$raw_n$rct,
+    x$diagnostics$sample_size$raw_n$obs
+  ))
 
   # E-value
   if (!is.null(x$sensitivity$e_value)) {
-    cat(sprintf("- E-value: %.*f (%s)\n",
-                digits, x$sensitivity$e_value$e_value,
-                x$sensitivity$e_value$interpretation))
+    cat(sprintf(
+      "- E-value: %.*f (%s)\n",
+      digits, x$sensitivity$e_value$e_value,
+      x$sensitivity$e_value$interpretation
+    ))
   }
 
   cat("\n")
@@ -83,9 +92,10 @@ print.unconf_test <- function(x, digits = 4, ...) {
 #' @param object An object of class `unconf_test`
 #' @param ... Additional arguments (unused)
 #' @return Summary object
+#' @seealso [print.unconf_test()], [plot.unconf_test()],
+#'   [unconfoundedness_test()] for creating the object.
 #' @export
 summary.unconf_test <- function(object, ...) {
-
   # Create comprehensive summary
   summary_obj <- list(
     call = object$call,
@@ -104,9 +114,9 @@ summary.unconf_test <- function(object, ...) {
 #' Print method for summary.unconf_test
 #' @param x Summary object
 #' @param ... Additional arguments (unused)
+#' @seealso [summary.unconf_test()] for creating the summary.
 #' @export
 print.summary.unconf_test <- function(x, ...) {
-
   cat("# Comprehensive Unconfoundedness Test Summary\n")
   cat(strrep("=", 60), "\n\n")
 
@@ -150,7 +160,6 @@ print.summary.unconf_test <- function(x, ...) {
 #' @param difference Estimated difference
 #' @return Interpretation string
 interpret_test_result <- function(p_value, difference) {
-
   significance <- if (p_value < 0.001) {
     "highly significant"
   } else if (p_value < 0.01) {
@@ -169,51 +178,64 @@ interpret_test_result <- function(p_value, difference) {
     "evidence of negative"
   }
 
-  paste0("Results show ", direction, " confounding (", significance,
-         " at p = ", sprintf("%.3f", p_value), ")")
+  paste0(
+    "Results show ", direction, " confounding (", significance,
+    " at p = ", sprintf("%.3f", p_value), ")"
+  )
 }
 
 #' Generate warnings based on diagnostics
 #' @param x unconf_test object
 #' @return Character vector of warnings
 generate_warnings <- function(x) {
-
   warnings <- character(0)
 
   # Check overlap
   if (!is.null(x$diagnostics$overlap$overlap_quality) &&
-      x$diagnostics$overlap$overlap_quality %in% c("Poor", "Fair")) {
-    warnings <- c(warnings,
-                  paste("Poor propensity score overlap detected.",
-                        "Consider restricting analysis to region of common support."))
+    x$diagnostics$overlap$overlap_quality %in% c("Poor", "Fair")) {
+    warnings <- c(
+      warnings,
+      paste(
+        "Poor propensity score overlap detected.",
+        "Consider restricting analysis to region of common support."
+      )
+    )
   }
 
   # Check balance
   if (!is.null(x$diagnostics$balance$overall_quality) &&
-      x$diagnostics$balance$overall_quality == "Poor") {
-    warnings <- c(warnings,
-                  "Poor covariate balance. Results may be sensitive to model specification.")
+    x$diagnostics$balance$overall_quality == "Poor") {
+    warnings <- c(
+      warnings,
+      "Poor covariate balance. Results may be sensitive to model specification."
+    )
   }
 
   # Check sample size
   if (x$diagnostics$sample_size$minimum_group_size < 30) {
-    warnings <- c(warnings,
-                  "Very small sample size in some treatment groups. Results may be unstable.")
+    warnings <- c(
+      warnings,
+      "Very small sample size in some treatment groups. Results may be unstable."
+    )
   }
 
   # Check effective sample size from transport
   if (!is.null(x$diagnostics$transport) &&
-      x$diagnostics$transport$effective_sample_size < 0.3 * x$diagnostics$sample_size$raw_n$rct) {
-    warnings <- c(warnings,
-                  "Transport weighting substantially reduces effective sample size.")
+    x$diagnostics$transport$effective_sample_size < 0.3 * x$diagnostics$sample_size$raw_n$rct) {
+    warnings <- c(
+      warnings,
+      "Transport weighting substantially reduces effective sample size."
+    )
   }
 
   # Check E-value
   if (!is.null(x$sensitivity$e_value) &&
-      !is.na(x$sensitivity$e_value$e_value) &&
-      x$sensitivity$e_value$e_value < 2.0) {
-    warnings <- c(warnings,
-                  "Low E-value suggests results may be fragile to unmeasured confounding.")
+    !is.na(x$sensitivity$e_value$e_value) &&
+    x$sensitivity$e_value$e_value < 2.0) {
+    warnings <- c(
+      warnings,
+      "Low E-value suggests results may be fragile to unmeasured confounding."
+    )
   }
 
   warnings
@@ -223,7 +245,6 @@ generate_warnings <- function(x) {
 #' @param diagnostics Diagnostics object
 #' @return Summarized diagnostics
 create_diagnostic_summary <- function(diagnostics) {
-
   summary_diag <- list()
 
   # Overlap summary
@@ -268,7 +289,6 @@ create_diagnostic_summary <- function(diagnostics) {
 #' @param summary_obj Summary object
 #' @return Formatted data frame
 format_summary_table <- function(summary_obj) {
-
   data.frame(
     Estimate = c(
       sprintf("%.4f", summary_obj$estimates$rct),
@@ -281,9 +301,11 @@ format_summary_table <- function(summary_obj) {
     ),
     CI_95 = c(
       "---", "---",
-      sprintf("[%.4f, %.4f]",
-              summary_obj$inference$confidence_interval[1],
-              summary_obj$inference$confidence_interval[2])
+      sprintf(
+        "[%.4f, %.4f]",
+        summary_obj$inference$confidence_interval[1],
+        summary_obj$inference$confidence_interval[2]
+      )
     ),
     P_value = c(
       "---", "---",
@@ -307,37 +329,45 @@ format_p_value <- function(p) {
 #' Print diagnostic summary
 #' @param diag_summary Diagnostic summary object
 print_diagnostic_summary <- function(diag_summary) {
-
   cat(sprintf("- Overlap quality: %s\n", diag_summary$overlap$quality))
-  cat(sprintf("- Extreme PS proportion: RCT=%.1f%%, Obs=%.1f%%\n",
-              100 * diag_summary$overlap$rct_extreme,
-              100 * diag_summary$overlap$obs_extreme))
+  cat(sprintf(
+    "- Extreme PS proportion: RCT=%.1f%%, Obs=%.1f%%\n",
+    100 * diag_summary$overlap$rct_extreme,
+    100 * diag_summary$overlap$obs_extreme
+  ))
 
   if (!is.null(diag_summary$balance)) {
-    cat(sprintf("- Balance quality: %s (max SMD: %.3f)\n",
-                diag_summary$balance$overall_quality,
-                diag_summary$balance$max_smd_between))
+    cat(sprintf(
+      "- Balance quality: %s (max SMD: %.3f)\n",
+      diag_summary$balance$overall_quality,
+      diag_summary$balance$max_smd_between
+    ))
   }
 
-  cat(sprintf("- Sample size: total=%d, min group=%d\n",
-              diag_summary$sample_size$total_n,
-              diag_summary$sample_size$min_group_size))
+  cat(sprintf(
+    "- Sample size: total=%d, min group=%d\n",
+    diag_summary$sample_size$total_n,
+    diag_summary$sample_size$min_group_size
+  ))
 
   if (!is.null(diag_summary$transport)) {
-    cat(sprintf("- Transport efficiency: ESS=%.1f, Weight CV=%.2f\n",
-                diag_summary$transport$effective_sample_size,
-                diag_summary$transport$weight_cv))
+    cat(sprintf(
+      "- Transport efficiency: ESS=%.1f, Weight CV=%.2f\n",
+      diag_summary$transport$effective_sample_size,
+      diag_summary$transport$weight_cv
+    ))
   }
 }
 
 #' Print sensitivity summary
 #' @param sensitivity Sensitivity analysis object
 print_sensitivity_summary <- function(sensitivity) {
-
   if (!is.null(sensitivity$e_value)) {
-    cat(sprintf("- E-value: %.2f (%s)\n",
-                sensitivity$e_value$e_value,
-                sensitivity$e_value$interpretation))
+    cat(sprintf(
+      "- E-value: %.2f (%s)\n",
+      sensitivity$e_value$e_value,
+      sensitivity$e_value$interpretation
+    ))
   }
 
   if (!is.null(sensitivity$fragility)) {
@@ -358,49 +388,62 @@ print_sensitivity_summary <- function(sensitivity) {
 #' @param x unconf_test object
 #' @return Character vector of recommendations
 generate_recommendations <- function(x) {
-
   recommendations <- character(0)
 
   # Based on overlap quality
   if (x$diagnostics$overlap$overlap_quality == "Poor") {
-    recommendations <- c(recommendations,
-                        "Consider trimming extreme propensity scores or using matching methods")
+    recommendations <- c(
+      recommendations,
+      "Consider trimming extreme propensity scores or using matching methods"
+    )
   }
 
   # Based on balance
   if (!is.null(x$diagnostics$balance$overall_quality) &&
-      x$diagnostics$balance$overall_quality == "Poor") {
-    recommendations <- c(recommendations,
-                        "Include additional covariates or use more flexible models")
+    x$diagnostics$balance$overall_quality == "Poor") {
+    recommendations <- c(
+      recommendations,
+      "Include additional covariates or use more flexible models"
+    )
   }
 
   # Based on sample size
   if (x$diagnostics$sample_size$minimum_group_size < 50) {
-    recommendations <- c(recommendations,
-                        "Increase sample size or combine analysis with similar studies")
+    recommendations <- c(
+      recommendations,
+      "Increase sample size or combine analysis with similar studies"
+    )
   }
 
   # Based on method
   if (x$methods$estimator == "ipw") {
-    recommendations <- c(recommendations,
-                        "Consider using AIPW (doubly robust) estimator for better protection against model misspecification")
+    recommendations <- c(
+      recommendations,
+      "Consider using AIPW (doubly robust) estimator for better protection against model misspecification"
+    )
   }
 
   # Based on significance
   if (x$inference$p_value < 0.05) {
-    recommendations <- c(recommendations,
-                        "Investigate potential sources of confounding and consider sensitivity analyses")
+    recommendations <- c(
+      recommendations,
+      "Investigate potential sources of confounding and consider sensitivity analyses"
+    )
   } else {
-    recommendations <- c(recommendations,
-                        "Non-significant result supports unconfoundedness assumption, but consider power analysis")
+    recommendations <- c(
+      recommendations,
+      "Non-significant result supports unconfoundedness assumption, but consider power analysis"
+    )
   }
 
   # Based on E-value
   if (!is.null(x$sensitivity$e_value) &&
-      !is.na(x$sensitivity$e_value$e_value) &&
-      x$sensitivity$e_value$e_value < 2.0) {
-    recommendations <- c(recommendations,
-                        "Low E-value suggests vulnerability to unmeasured confounding. Consider instrumental variables or other approaches")
+    !is.na(x$sensitivity$e_value$e_value) &&
+    x$sensitivity$e_value$e_value < 2.0) {
+    recommendations <- c(
+      recommendations,
+      "Low E-value suggests vulnerability to unmeasured confounding. Consider instrumental variables or other approaches"
+    )
   }
 
   recommendations

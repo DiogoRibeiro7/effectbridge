@@ -58,9 +58,9 @@ rct_data <- generate_rct_data(
 obs_data <- generate_obs_data(
   n = 1000,
   p_covariates = 3,
-  treatment_effect = 1.0,        # Same true effect
-  confounding_strength = 0.4,    # But with confounding bias
-  covariate_shift = TRUE,        # And population differences
+  treatment_effect = 1.0, # Same true effect
+  confounding_strength = 0.4, # But with confounding bias
+  covariate_shift = TRUE, # And population differences
   outcome_type = "continuous",
   seed = 456
 )
@@ -82,12 +82,12 @@ Now let's run the basic test:
 result <- unconfoundedness_test(
   data_rct = rct_data,
   data_obs = obs_data,
-  formula = Y ~ A + X1 + X2 + X3,    # A must be first RHS term
-  estimator = "aipw",                 # Doubly robust estimator
-  effect_measure = "rd",              # Risk difference
-  transport = "none",                 # No transportability adjustment yet
-  inference_method = "bootstrap",     # Bootstrap inference
-  B = 500,                            # Bootstrap replicates (reduced for speed)
+  formula = Y ~ A + X1 + X2 + X3, # A must be first RHS term
+  estimator = "aipw", # Doubly robust estimator
+  effect_measure = "rd", # Risk difference
+  transport = "none", # No transportability adjustment yet
+  inference_method = "bootstrap", # Bootstrap inference
+  B = 500, # Bootstrap replicates (reduced for speed)
   seed = 42
 )
 
@@ -120,9 +120,9 @@ result_auto <- unconfoundedness_test(
   data_obs = obs_data,
   formula = Y ~ A + X1 + X2 + X3,
   estimator = "aipw",
-  transport = "auto",          # Automatic shift detection
-  auto_method = "both",        # Use both KS and energy tests
-  auto_alpha = 0.01,           # Significance level for shift tests
+  transport = "auto", # Automatic shift detection
+  auto_method = "both", # Use both KS and energy tests
+  auto_alpha = 0.01, # Significance level for shift tests
   B = 500,
   seed = 42
 )
@@ -139,7 +139,7 @@ cat("Shift detected:", result_auto$diagnostics$auto_detection$shift_detected, "\
 Compare results across different estimation methods:
 
 ```{r multiple_estimators}
-estimators <- c("ipw", "aipw")  # Add "tmle", "gcomp" if packages available
+estimators <- c("ipw", "aipw") # Add "tmle", "gcomp" if packages available
 results_by_estimator <- list()
 
 for (est in estimators) {
@@ -149,7 +149,7 @@ for (est in estimators) {
     formula = Y ~ A + X1 + X2 + X3,
     estimator = est,
     transport = "auto",
-    B = 300,  # Reduced for speed
+    B = 300, # Reduced for speed
     seed = 42
   )
 }
@@ -258,10 +258,14 @@ print(summary_result)
 cat("Overlap quality:", result_auto$diagnostics$overlap$overlap_quality, "\n")
 
 # Extreme propensity scores
-cat("RCT extreme PS:",
-    round(100 * result_auto$diagnostics$overlap$extreme_ps_proportion$rct, 1), "%\n")
-cat("Obs extreme PS:",
-    round(100 * result_auto$diagnostics$overlap$extreme_ps_proportion$obs, 1), "%\n")
+cat(
+  "RCT extreme PS:",
+  round(100 * result_auto$diagnostics$overlap$extreme_ps_proportion$rct, 1), "%\n"
+)
+cat(
+  "Obs extreme PS:",
+  round(100 * result_auto$diagnostics$overlap$extreme_ps_proportion$obs, 1), "%\n"
+)
 
 # Sample sizes
 cat("Effective sample sizes:\n")
@@ -270,8 +274,10 @@ cat("  Obs:", round(result_auto$diagnostics$sample_size$effective_n$obs), "\n")
 
 # E-value interpretation
 if (!is.null(result_auto$sensitivity$e_value)) {
-  cat("E-value:", round(result_auto$sensitivity$e_value$e_value, 2),
-      "(", result_auto$sensitivity$e_value$interpretation, ")\n")
+  cat(
+    "E-value:", round(result_auto$sensitivity$e_value$e_value, 2),
+    "(", result_auto$sensitivity$e_value$interpretation, ")\n"
+  )
 }
 ```
 
@@ -282,11 +288,11 @@ Evaluate the power of the test under different scenarios:
 ```{r power_analysis}
 # Small power analysis (use larger n_sim in practice)
 power_result <- simulate_power_analysis(
-  n_sim = 50,                       # Use 1000+ in practice
+  n_sim = 50, # Use 1000+ in practice
   n_rct = 300,
   n_obs = 500,
   treatment_effect_rct = 1.0,
-  treatment_effect_obs = 1.3,       # 30% bias
+  treatment_effect_obs = 1.3, # 30% bias
   confounding_strength = 0.4,
   alpha = 0.05,
   seed = 123
@@ -296,9 +302,10 @@ print(power_result$results)
 
 # Plot power simulation results
 hist(power_result$raw_results$differences,
-     main = "Distribution of Estimated Differences",
-     xlab = "Difference (Obs - RCT)",
-     col = "lightblue", border = "black")
+  main = "Distribution of Estimated Differences",
+  xlab = "Difference (Obs - RCT)",
+  col = "lightblue", border = "black"
+)
 abline(v = power_result$settings$true_difference, col = "red", lwd = 2, lty = 2)
 legend("topright", "True Difference", col = "red", lty = 2, lwd = 2)
 ```
@@ -312,12 +319,16 @@ legend("topright", "True Difference", col = "red", lty = 2, lwd = 2)
 export_to_csv(result_auto, file = "unconfoundedness_results.csv")
 
 # Create LaTeX table
-create_latex_table(result_auto, file = "results_table.tex",
-                   caption = "Unconfoundedness Test Results")
+create_latex_table(result_auto,
+  file = "results_table.tex",
+  caption = "Unconfoundedness Test Results"
+)
 
 # Generate diagnostic report
-create_diagnostic_report(result_auto, file = "diagnostics_report.html",
-                         format = "html")
+create_diagnostic_report(result_auto,
+  file = "diagnostics_report.html",
+  format = "html"
+)
 ```
 
 ## Batch Analysis
@@ -343,8 +354,8 @@ batch_results <- batch_analysis(
   formula = Y ~ A + X1 + X2 + X3,
   estimator = "aipw",
   transport = "auto",
-  B = 200,               # Reduced for speed
-  validate = FALSE        # Skip validation for demo
+  B = 200, # Reduced for speed
+  validate = FALSE # Skip validation for demo
 )
 
 print(batch_results)
@@ -372,7 +383,7 @@ print(batch_results)
 required_n <- compute_required_sample_size(
   power = 0.8,
   alpha = 0.05,
-  effect_size = 0.3,  # Expected difference
+  effect_size = 0.3, # Expected difference
   ratio_obs_to_rct = 2
 )
 print(required_n)
@@ -397,7 +408,7 @@ result_trimmed <- unconfoundedness_test(
   data_rct = rct_data,
   data_obs = obs_data,
   formula = Y ~ A + X1 + X2 + X3,
-  trim = c(0.05, 0.95),     # Trim extreme 10%
+  trim = c(0.05, 0.95), # Trim extreme 10%
   estimator = "aipw",
   B = 500
 )
@@ -421,8 +432,10 @@ validate_installation()
 
 # Test with known null case (same data generation process)
 rct_null <- generate_rct_data(n = 300, treatment_effect = 1.0, seed = 111)
-obs_null <- generate_obs_data(n = 400, treatment_effect = 1.0,
-                              confounding_strength = 0, seed = 222)  # No confounding
+obs_null <- generate_obs_data(
+  n = 400, treatment_effect = 1.0,
+  confounding_strength = 0, seed = 222
+) # No confounding
 
 null_result <- unconfoundedness_test(
   rct_null, obs_null, Y ~ A + X1 + X2,

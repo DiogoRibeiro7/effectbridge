@@ -42,3 +42,7 @@ obs_data <- generate_obs_data(n = 1000, confounding_strength = 0.5,
 head(obs_data)
 }
 }
+\seealso{
+\code{\link[=generate_rct_data]{generate_rct_data()}} for RCT data,
+\code{\link[=unconfoundedness_test]{unconfoundedness_test()}} for using the generated data.
+}

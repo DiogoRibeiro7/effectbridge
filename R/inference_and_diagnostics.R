@@ -808,8 +808,7 @@ create_result_object <- function(
 #' @param effect_measure Effect measure
 #' @return Difference estimate
 compute_effect_difference <- function(rct_effect, obs_effect, effect_measure) {
-  switch(
-    effect_measure,
+  switch(effect_measure,
     "rd" = obs_effect$estimate - rct_effect$estimate,
     "rr" = obs_effect$estimate / rct_effect$estimate, # Ratio of ratios
     "or" = obs_effect$estimate / rct_effect$estimate, # Ratio of odds ratios
@@ -941,13 +940,16 @@ bootstrap_inference <- function(
     pkg_ns <- asNamespace("effectbridge")
     parallel::clusterExport(
       cl,
-      c("parsed_data", "estimator", "effect_measure",
-        "family_y", "transport_applied"),
+      c(
+        "parsed_data", "estimator", "effect_measure",
+        "family_y", "transport_applied"
+      ),
       envir = environment()
     )
     parallel::clusterExport(
       cl,
-      c("single_bootstrap_replicate", "estimate_single_effect",
+      c(
+        "single_bootstrap_replicate", "estimate_single_effect",
         "compute_effect_difference", "compute_transport_weights",
         "estimate_ipw", "estimate_aipw", "estimate_gcomp",
         "estimate_matching", "estimate_tmle",
@@ -957,7 +959,8 @@ bootstrap_inference <- function(
         "compute_aipw_pseudo_outcomes",
         "compute_ipw_influence_function",
         "compute_aipw_influence_function",
-        "wtd.var"),
+        "wtd.var"
+      ),
       envir = pkg_ns
     )
 
@@ -1057,9 +1060,13 @@ single_bootstrap_replicate <- function(
       stabilize = TRUE,
       trim = NULL
     ),
-    error = function(e) return(NULL)
+    error = function(e) {
+      return(NULL)
+    }
   )
-  if (is.null(rct_effect_b)) return(NA_real_)
+  if (is.null(rct_effect_b)) {
+    return(NA_real_)
+  }
 
   obs_effect_b <- tryCatch(
     estimate_single_effect(
@@ -1073,11 +1080,14 @@ single_bootstrap_replicate <- function(
       stabilize = TRUE,
       trim = NULL
     ),
-    error = function(e) return(NULL)
+    error = function(e) {
+      return(NULL)
+    }
   )
-  if (is.null(obs_effect_b)) return(NA_real_)
+  if (is.null(obs_effect_b)) {
+    return(NA_real_)
+  }
 
   # Return difference
   compute_effect_difference(rct_effect_b, obs_effect_b, effect_measure)
 }
-

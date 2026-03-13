@@ -99,10 +99,12 @@ test_that("export_to_csv works with list of results", {
   obs2 <- generate_obs_data(n = 150, seed = 502)
 
   r1 <- unconfoundedness_test(
-    rct1, obs1, Y ~ A + X1 + X2, B = 50, validate = FALSE, seed = 601
+    rct1, obs1, Y ~ A + X1 + X2,
+    B = 50, validate = FALSE, seed = 601
   )
   r2 <- unconfoundedness_test(
-    rct2, obs2, Y ~ A + X1 + X2, B = 50, validate = FALSE, seed = 602
+    rct2, obs2, Y ~ A + X1 + X2,
+    B = 50, validate = FALSE, seed = 602
   )
 
   results <- list(study1 = r1, study2 = r2)
@@ -144,10 +146,12 @@ test_that("create_latex_table works with multiple results", {
   obs2 <- generate_obs_data(n = 150, seed = 504)
 
   r1 <- unconfoundedness_test(
-    rct1, obs1, Y ~ A + X1 + X2, B = 50, validate = FALSE, seed = 603
+    rct1, obs1, Y ~ A + X1 + X2,
+    B = 50, validate = FALSE, seed = 603
   )
   r2 <- unconfoundedness_test(
-    rct2, obs2, Y ~ A + X1 + X2, B = 50, validate = FALSE, seed = 604
+    rct2, obs2, Y ~ A + X1 + X2,
+    B = 50, validate = FALSE, seed = 604
   )
 
   results <- list(study1 = r1, study2 = r2)

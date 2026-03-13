@@ -10,4 +10,3 @@ library(testthat)
 library(effectbridge)
 
 test_check("effectbridge")
-

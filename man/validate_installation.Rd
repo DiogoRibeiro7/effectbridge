@@ -12,3 +12,6 @@ Logical indicating if all dependencies are available
 \description{
 Validate package installation and dependencies
 }
+\seealso{
+\code{\link[=unconfoundedness_test]{unconfoundedness_test()}} for the main analysis function.
+}

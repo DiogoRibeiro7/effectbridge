@@ -34,3 +34,6 @@ sample_sizes <- compute_required_sample_size(
 print(sample_sizes)
 }
 }
+\seealso{
+\code{\link[=simulate_power_analysis]{simulate_power_analysis()}} for simulation-based power analysis.
+}
