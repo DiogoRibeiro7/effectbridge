@@ -103,3 +103,9 @@ plot(result)
 summary(result)
 }
 }
+\seealso{
+\code{\link[=generate_rct_data]{generate_rct_data()}} and \code{\link[=generate_obs_data]{generate_obs_data()}} for simulating input data,
+\code{\link[=batch_analysis]{batch_analysis()}} for running multiple analyses,
+\code{\link[=print.unconf_test]{print.unconf_test()}}, \code{\link[=summary.unconf_test]{summary.unconf_test()}}, and \code{\link[=plot.unconf_test]{plot.unconf_test()}}
+for inspecting results.
+}

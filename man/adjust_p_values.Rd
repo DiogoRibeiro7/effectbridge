@@ -17,3 +17,7 @@ Adjusted p-values
 \description{
 Multiple comparison correction for subgroup analyses
 }
+\seealso{
+\code{\link[=batch_analysis]{batch_analysis()}} for running multiple analyses that may need
+p-value adjustment, \code{\link[stats:p.adjust]{stats::p.adjust()}} for the underlying method.
+}

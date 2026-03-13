@@ -14,3 +14,6 @@
 \description{
 Print method for summary.unconf_test
 }
+\seealso{
+\code{\link[=summary.unconf_test]{summary.unconf_test()}} for creating the summary.
+}

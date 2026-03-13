@@ -55,6 +55,11 @@
 #' plot(result)
 #' summary(result)
 #' }
+#' @seealso
+#' [generate_rct_data()] and [generate_obs_data()] for simulating input data,
+#' [batch_analysis()] for running multiple analyses,
+#' [print.unconf_test()], [summary.unconf_test()], and [plot.unconf_test()]
+#' for inspecting results.
 #' @export
 unconfoundedness_test <- function(
   data_rct,

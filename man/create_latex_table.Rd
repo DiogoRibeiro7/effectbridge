@@ -19,3 +19,7 @@ LaTeX table code
 \description{
 Create latex table from results
 }
+\seealso{
+\code{\link[=export_to_csv]{export_to_csv()}} for CSV export,
+\code{\link[=create_diagnostic_report]{create_diagnostic_report()}} for full HTML/PDF reports.
+}

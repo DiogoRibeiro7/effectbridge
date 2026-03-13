@@ -19,3 +19,7 @@ Invisibly returns the plot object (if applicable)
 \description{
 Plot method for unconf_test objects
 }
+\seealso{
+\code{\link[=print.unconf_test]{print.unconf_test()}}, \code{\link[=summary.unconf_test]{summary.unconf_test()}},
+\code{\link[=unconfoundedness_test]{unconfoundedness_test()}} for creating the object.
+}

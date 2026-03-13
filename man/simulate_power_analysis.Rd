@@ -47,3 +47,7 @@ power_results <- simulate_power_analysis(
 print(power_results)
 }
 }
+\seealso{
+\code{\link[=compute_required_sample_size]{compute_required_sample_size()}} for analytic sample-size
+calculation, \code{\link[=unconfoundedness_test]{unconfoundedness_test()}} for the underlying test.
+}
