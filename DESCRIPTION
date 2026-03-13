@@ -1,6 +1,6 @@
 Package: unconfoundedr
 Title: Test Unconfoundedness by Comparing RCT and Observational Effects
-Version: 0.2.0
+Version: 0.2.0.9000
 Authors@R: 
     c(person(given = "Diogo", family = "Ribeiro",
              role = c("aut", "cre"),

@@ -937,12 +937,28 @@ bootstrap_inference <- function(
     cl <- parallel::makeCluster(n_cores)
     on.exit(parallel::stopCluster(cl))
 
-    # Export necessary functions and data
-    parallel::clusterEvalQ(cl, library(stats))
+    # Export package functions and data to workers
+    pkg_ns <- asNamespace("unconfoundedr")
     parallel::clusterExport(
       cl,
-      ls(envir = globalenv()),
+      c("parsed_data", "estimator", "effect_measure",
+        "family_y", "transport_applied"),
       envir = environment()
+    )
+    parallel::clusterExport(
+      cl,
+      c("single_bootstrap_replicate", "estimate_single_effect",
+        "compute_effect_difference", "compute_transport_weights",
+        "estimate_ipw", "estimate_aipw", "estimate_gcomp",
+        "estimate_matching", "estimate_tmle",
+        "fit_propensity_model", "fit_outcome_models",
+        "build_ps_formula", "compute_ipw_weights",
+        "apply_weight_trimming", "compute_effect_measure",
+        "compute_aipw_pseudo_outcomes",
+        "compute_ipw_influence_function",
+        "compute_aipw_influence_function",
+        "wtd.var"),
+      envir = pkg_ns
     )
 
     # Run bootstrap in parallel

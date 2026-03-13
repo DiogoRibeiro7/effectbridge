@@ -37,6 +37,8 @@ preferred-citation:
   authors:
     - family-names: Ribeiro
       given-names: Diogo
+      orcid: "https://orcid.org/0009-0001-2022-7072"
   year: 2025
   version: "0.2.0"
-  url: "https://diogoribeiro7.github.io/unconfoundedr"
+  url: "https://diogoribeiro7.github.io/packages/unconfoundedr/"
+  repository-code: "https://github.com/DiogoRibeiro7/unconfoundedr"
