@@ -76,11 +76,8 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - {os: ubuntu-latest,  r: 'devel',    artifact-name: 'Linux-devel',   http-user-agent: 'release', release_only: false}
-          - {os: ubuntu-latest,  r: 'release',  artifact-name: 'Linux-release', release_only: false}
-          - {os: macos-latest,   r: 'release',  artifact-name: 'macOS',         release_only: true}
-          - {os: windows-latest, r: 'release',  artifact-name: 'Windows',       release_only: true}
-    if: ${{ !matrix.config.release_only || startsWith(github.ref, 'refs/tags/v') }}
+          - {os: ubuntu-latest, r: 'devel',   artifact-name: 'Linux-devel',   http-user-agent: 'release'}
+          - {os: ubuntu-latest, r: 'release', artifact-name: 'Linux-release'}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -115,6 +112,75 @@ jobs:
       #   run: |
       #     sudo apt-get update
       #     sudo apt-get install -y libtiff-dev
+
+      - name: Session info
+        run: |
+          options(width = 100)
+          pkgs <- installed.packages()[, "Package"]
+          sessioninfo::session_info(pkgs, include_base = TRUE)
+        shell: Rscript {0}
+
+      - name: R CMD check
+        env:
+          _R_CHECK_CRAN_INCOMING_: false
+        run: |
+          options(crayon.enabled = TRUE)
+          rcmdcheck::rcmdcheck(
+            args = c("--no-manual", "--as-cran", "--no-build-vignettes"),
+            build_args = c("--no-build-vignettes"),
+            error_on = "error",
+            check_dir = "check"
+          )
+        shell: Rscript {0}
+
+      - name: Show testthat output
+        if: always()
+        run: find check -name 'testthat.Rout*' -exec cat '{}' \; || true
+        shell: bash
+
+      - name: Upload check results
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.config.artifact-name }}-results
+          path: check
+
+  check-release:
+    name: R-CMD-check release-only (${{ matrix.config.os }}, R-${{ matrix.config.r }})
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {os: macos-latest,   r: 'release', artifact-name: 'macOS',   http-user-agent: 'release'}
+          - {os: windows-latest, r: 'release', artifact-name: 'Windows', http-user-agent: 'release'}
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+      _R_CHECK_CRAN_INCOMING_: false
+      _R_CHECK_CRAN_INCOMING_REMOTE_: false
+      _R_CHECK_FORCE_SUGGESTS_: false
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ matrix.config.r }}
+          http-user-agent: ${{ matrix.config.http-user-agent }}
+          use-public-rspm: true
+
+      - name: Install deps (incl. rcmdcheck & sessioninfo)
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: |
+            any::rcmdcheck
+            any::sessioninfo
+          needs: check
 
       - name: Session info
         run: |
@@ -368,17 +434,23 @@ jobs:
   check-status:
     name: Check Status
     if: always()
-    needs: [check, test-coverage]
+    needs: [check, check-release, test-coverage]
     runs-on: ubuntu-latest
     steps:
       - name: Final status
         run: |
-          if [[ "${{ needs.check.result }}" == "success" && "${{ needs.test-coverage.result }}" == "success" ]]; then
+          check_release_ok="false"
+          if [[ "${{ needs['check-release'].result }}" == "success" || "${{ needs['check-release'].result }}" == "skipped" ]]; then
+            check_release_ok="true"
+          fi
+
+          if [[ "${{ needs.check.result }}" == "success" && "$check_release_ok" == "true" && "${{ needs.test-coverage.result }}" == "success" ]]; then
             echo "✅ All checks passed!"
             exit 0
           else
             echo "❌ Some checks failed"
             echo "Check results: ${{ needs.check.result }}"
+            echo "Release-only check results: ${{ needs['check-release'].result }}"
             echo "Coverage results: ${{ needs.test-coverage.result }}"
             exit 1
           fi
