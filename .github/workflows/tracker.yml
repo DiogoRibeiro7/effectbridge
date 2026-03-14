@@ -25,5 +25,5 @@ jobs:
           github-token: ${{ secrets.PROJECT_TOKEN }}
           tracker-path: tracker.json
           project-owner: DiogoRibeiro7
-          project-number: 4
+          project-number: 5
           on-orphan: warn
