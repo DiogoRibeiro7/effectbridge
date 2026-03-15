@@ -26,7 +26,7 @@
     {
       "title": "test: add edge-case tests for positivity and perfect separation",
       "description": "Add focused tests for critical estimator failure modes.",
-      "status": "planned",
+      "status": "completed",
       "priority": "medium",
       "labels": ["testing", "estimators"]
     },
