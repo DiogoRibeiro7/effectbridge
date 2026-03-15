@@ -128,10 +128,20 @@ jobs:
           rcmdcheck::rcmdcheck(
             args = c("--no-manual", "--as-cran", "--no-build-vignettes"),
             build_args = c("--no-build-vignettes"),
-            error_on = "error",
+            error_on = "warning",
             check_dir = "check"
           )
         shell: Rscript {0}
+
+      - name: Show R CMD check summary
+        if: always()
+        run: |
+          echo "R CMD check 00check.log locations:"
+          find check -name '00check.log' -print || true
+          echo
+          echo "Warnings/Errors/Notes from 00check.log:"
+          find check -name '00check.log' -exec grep -nE "WARNING|ERROR|NOTE" {} \; || true
+        shell: bash
 
       - name: Show testthat output
         if: always()
@@ -197,10 +207,20 @@ jobs:
           rcmdcheck::rcmdcheck(
             args = c("--no-manual", "--as-cran", "--no-build-vignettes"),
             build_args = c("--no-build-vignettes"),
-            error_on = "error",
+            error_on = "warning",
             check_dir = "check"
           )
         shell: Rscript {0}
+
+      - name: Show R CMD check summary
+        if: always()
+        run: |
+          echo "R CMD check 00check.log locations:"
+          find check -name '00check.log' -print || true
+          echo
+          echo "Warnings/Errors/Notes from 00check.log:"
+          find check -name '00check.log' -exec grep -nE "WARNING|ERROR|NOTE" {} \; || true
+        shell: bash
 
       - name: Show testthat output
         if: always()
