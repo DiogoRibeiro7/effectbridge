@@ -135,7 +135,7 @@ test_that("plot effects method runs without error", {
     seed = 505
   )
 
-  expect_no_error(plot(result, type = "effects"))
+  expect_no_error(with_plot_sandbox(plot(result, type = "effects")))
 })
 
 test_that("plot overlap method runs without error", {
@@ -153,7 +153,7 @@ test_that("plot overlap method runs without error", {
     seed = 506
   )
 
-  expect_no_error(plot(result, type = "overlap"))
+  expect_no_error(with_plot_sandbox(plot(result, type = "overlap")))
 })
 
 test_that("plot balance method runs without error", {
@@ -171,7 +171,7 @@ test_that("plot balance method runs without error", {
     seed = 507
   )
 
-  expect_no_error(plot(result, type = "balance"))
+  expect_no_error(with_plot_sandbox(plot(result, type = "balance")))
 })
 
 test_that("plot bootstrap method runs without error", {
@@ -190,7 +190,7 @@ test_that("plot bootstrap method runs without error", {
     seed = 508
   )
 
-  expect_no_error(plot(result, type = "bootstrap"))
+  expect_no_error(with_plot_sandbox(plot(result, type = "bootstrap")))
 })
 
 test_that("plot bootstrap handles non-bootstrap inference gracefully", {
@@ -208,7 +208,7 @@ test_that("plot bootstrap handles non-bootstrap inference gracefully", {
     seed = 509
   )
 
-  expect_output(plot(result, type = "bootstrap"), "not available")
+  expect_output(with_plot_sandbox(plot(result, type = "bootstrap")), "not available")
 })
 
 test_that("plot weights handles no-transport case gracefully", {
@@ -227,5 +227,5 @@ test_that("plot weights handles no-transport case gracefully", {
     seed = 510
   )
 
-  expect_output(plot(result, type = "weights"), "No transport")
+  expect_output(with_plot_sandbox(plot(result, type = "weights")), "No transport")
 })
