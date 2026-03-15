@@ -33,7 +33,7 @@
     {
       "title": "test: validate bootstrap and analytical inference against simulation baselines",
       "description": "Validate inference reliability empirically via simulation.",
-      "status": "planned",
+      "status": "completed",
       "priority": "medium",
       "labels": ["testing", "inference"]
     },

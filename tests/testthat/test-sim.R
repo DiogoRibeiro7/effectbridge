@@ -74,3 +74,73 @@ test_that("confounding_strength = 0 produces near-random treatment", {
   # With no confounding, treatment prevalence should be near baseline
   expect_true(abs(mean(o$A) - 0.38) < 0.1) # logistic(-0.5) ~ 0.38
 })
+
+run_inference_baseline_sim <- function(
+  n_sim = 12,
+  n_rct = 220,
+  n_obs = 320,
+  true_difference = 0
+) {
+  methods <- c("bootstrap", "analytical")
+  out <- lapply(methods, function(m) {
+    list(diff = numeric(n_sim), se = numeric(n_sim), cover = logical(n_sim))
+  })
+  names(out) <- methods
+
+  for (i in seq_len(n_sim)) {
+    seed_base <- 1000 + i
+    rct <- generate_rct_data(
+      n = n_rct,
+      treatment_effect = 1.0,
+      seed = seed_base
+    )
+    obs <- generate_obs_data(
+      n = n_obs,
+      treatment_effect = 1.0,
+      confounding_strength = 0.0,
+      seed = seed_base + 5000
+    )
+
+    for (m in methods) {
+      res <- unconfoundedness_test(
+        data_rct = rct,
+        data_obs = obs,
+        formula = Y ~ A + X1 + X2,
+        estimator = "aipw",
+        transport = "none",
+        inference_method = m,
+        B = 120,
+        validate = FALSE,
+        seed = seed_base + 9000
+      )
+
+      out[[m]]$diff[i] <- res$estimates$difference
+      out[[m]]$se[i] <- res$inference$standard_error
+      ci <- res$inference$confidence_interval
+      out[[m]]$cover[i] <- (true_difference >= ci[1] && true_difference <= ci[2])
+    }
+  }
+
+  out
+}
+
+test_that("bootstrap and analytical inference satisfy null simulation baselines", {
+  sim <- run_inference_baseline_sim()
+
+  for (m in names(sim)) {
+    expect_true(all(is.finite(sim[[m]]$diff)))
+    expect_true(all(is.finite(sim[[m]]$se)))
+    expect_true(all(sim[[m]]$se > 0))
+
+    # Null scenario (true difference = 0): both methods should have low bias and
+    # non-degenerate coverage in repeated simulations.
+    expect_lt(abs(mean(sim[[m]]$diff)), 0.20)
+    expect_gte(mean(sim[[m]]$cover), 0.50)
+  }
+
+  # Methods should be in the same order of magnitude for uncertainty.
+  se_ratio <- median(sim$bootstrap$se) / median(sim$analytical$se)
+  expect_true(is.finite(se_ratio))
+  expect_gte(se_ratio, 0.5)
+  expect_lte(se_ratio, 2.0)
+})
