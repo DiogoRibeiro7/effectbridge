@@ -143,3 +143,57 @@ test_that("effect difference computed correctly for risk difference", {
   expected_diff <- result$estimates$observational - result$estimates$rct
   expect_equal(result$estimates$difference, expected_diff)
 })
+
+test_that("positivity-edge weights remain finite and nonnegative", {
+  set.seed(106)
+
+  n <- 400
+  A <- rbinom(n, 1, 0.5)
+  e <- c(
+    rep(1e-3, n / 4),
+    rep(0.999, n / 4),
+    rep(0.05, n / 4),
+    rep(0.95, n / 4)
+  )
+
+  ipw_weights <- effectbridge:::compute_ipw_weights(
+    A = A,
+    e = e,
+    weights = rep(1, n),
+    stabilize = FALSE
+  )
+
+  expect_true(all(is.finite(ipw_weights)))
+  expect_true(all(ipw_weights >= 0))
+  expect_gt(max(ipw_weights), 100)
+})
+
+test_that("perfect-separation-like propensity model falls back safely", {
+  set.seed(107)
+
+  n <- 300
+  X1 <- rnorm(n)
+  X2 <- rbinom(n, 1, 0.5)
+  A <- as.integer(X1 > 0) # deterministic treatment assignment (separation)
+  X <- cbind("(Intercept)" = 1, X1 = X1, X2 = X2)
+
+  expect_warning(
+    ps_fit <- effectbridge:::fit_propensity_model(A, X, weights = rep(1, n)),
+    "Propensity score model fitting failed; using marginal treated proportion as PS"
+  )
+  e <- ps_fit$fitted_values
+
+  expect_true(all(e >= 1e-3))
+  expect_true(all(e <= 1 - 1e-3))
+  expect_equal(mean(e), mean(A), tolerance = 1e-12)
+  expect_equal(stats::sd(e), 0, tolerance = 1e-12)
+
+  ipw_weights <- effectbridge:::compute_ipw_weights(
+    A = A,
+    e = e,
+    weights = rep(1, n),
+    stabilize = FALSE
+  )
+  expect_true(all(is.finite(ipw_weights)))
+  expect_true(all(ipw_weights >= 0))
+})
