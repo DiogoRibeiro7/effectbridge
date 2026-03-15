@@ -5,7 +5,7 @@
     {
       "title": "chore: complete repository rename validation to effectbridge",
       "description": "Ensure no stale references to the old repository/package identity remain.",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "high",
       "labels": ["maintenance", "documentation"]
     },
