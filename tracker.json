@@ -19,7 +19,7 @@
     {
       "title": "ci: enforce R CMD check --as-cran and fail on warnings",
       "description": "Tighten CI quality gates for release readiness.",
-      "status": "planned",
+      "status": "completed",
       "priority": "high",
       "labels": ["ci", "quality"]
     },
